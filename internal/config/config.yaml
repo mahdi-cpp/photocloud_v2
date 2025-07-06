@@ -1,0 +1,113 @@
+# Server configuration
+server:
+  host: "0.0.0.0" # Bind address
+  port: 8080       # Listen port
+  mode: "release"  # gin mode: debug, release, test
+  graceful_timeout: 30s # Graceful shutdown timeout
+  max_body_size: "100MB" # Max request body size
+  cors:
+    enabled: true
+    allow_origins: ["*"]
+    allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_headers: ["Origin", "Content-Type", "Authorization"]
+
+# Storage system configuration
+storage:
+  assets_dir: "/var/photocloud/assets"       # Original asset storage
+  metadata_dir: "/var/photocloud/metadata"   # JSON metadata storage
+  thumbnails_dir: "/var/photocloud/thumbnails" # Generated thumbnails
+  index_file: "/var/photocloud/index.dat"    # Serialized index data
+  cache:
+    size: 1000     # Number of assets to keep in LRU cache
+    stats_interval: "5m" # Cache stats collection interval
+  index:
+    rebuild_interval: "24h" # Full index rebuild interval
+    save_interval: "5m"    # Dirty index save interval
+    integrity_check: "12h"  # Index integrity check interval
+  upload:
+    temp_dir: "/tmp/photocloud/uploads" # Temporary upload directory
+    max_size: "500MB"     # Max upload size per asset
+    retention: "1h"       # Temporary upload retention period
+
+# Media processing configuration
+media:
+  thumbnails:
+    default_width: 300    # Default thumbnail width
+    default_height: 300   # Default thumbnail height
+    jpeg_quality: 85      # Thumbnail JPEG quality (1-100)
+    png_compression: 6    # PNG compression level (0-9)
+    generate_on_upload: true # Generate thumbnails during upload
+  image:
+    max_width: 10000      # Max allowed image width
+    max_height: 10000     # Max allowed image height
+  video:
+    enabled: true         # Enable video processing
+    max_duration: "10m"   # Max video duration
+    thumbnail_offset: "00:00:05" # Time offset for video thumbnails
+
+# Authentication and security
+auth:
+  jwt:
+    secret: "change-me-to-secure-random-value" # JWT signing secret
+    issuer: "photocloud"
+    expiration: "720h"    # 30 days
+    refresh_expiration: "2160h" # 90 days
+  rate_limiting:
+    enabled: true
+    requests: 100         # Requests per minute
+    burst: 25             # Burst capacity
+  encryption:
+    assets: false         # Encrypt assets at rest
+    key: ""               # Encryption key (if enabled)
+
+# Observability and monitoring
+monitoring:
+  metrics:
+    enabled: true         # Enable Prometheus metrics
+    path: "/metrics"      # Metrics endpoint
+  tracing:
+    enabled: false        # Enable OpenTelemetry tracing
+    endpoint: "localhost:4317"
+  logging:
+    level: "info"         # Log level: debug, info, warn, error
+    format: "json"        # Log format: json, text
+    file: "/var/log/photocloud/app.log"
+    max_size: 100         # Max log file size (MB)
+    max_backups: 3        # Max log backups
+    max_age: 30           # Max log age (days)
+
+# Background workers
+workers:
+  thumbnail_generator:
+    enabled: true
+    concurrency: 4        # Concurrent thumbnail workers
+    batch_size: 10        # Assets per batch
+    interval: "5m"        # Processing interval
+  index_maintenance:
+    enabled: true
+    interval: "1h"        # Maintenance task interval
+
+# External services (optional)
+integrations:
+  exif_tool:
+    enabled: true
+    path: "/usr/bin/exiftool" # Path to exiftool binary
+  image_magick:
+    enabled: true
+    path: "/usr/bin/convert" # Path to ImageMagick convert
+  ffmpeg:
+    enabled: true
+    path: "/usr/bin/ffmpeg" # Path to ffmpeg for video processing
+
+# Feature flags
+features:
+  advanced_search: true
+  face_recognition: false
+  duplicate_detection: true
+  ai_tagging: false
+  sharing: true
+  versioning: false
+
+# Environment-specific overrides (via ENV vars)
+# Example: PHOTOCLOUD_SERVER_PORT=9090
+#          PHOTOCLOUD_STORAGE_ASSETS_DIR=/mnt/storage/assets
