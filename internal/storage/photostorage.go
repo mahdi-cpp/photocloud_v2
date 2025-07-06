@@ -561,6 +561,7 @@ func (ps *PhotoStorage) saveIndex() error {
 
 // rebuildIndex reconstructs the index from metadata files
 func (ps *PhotoStorage) rebuildIndex() error {
+
 	// Clear existing indexes
 	ps.assetIndex = make(map[int]string)
 	ps.userIndex = make(map[int][]int)
