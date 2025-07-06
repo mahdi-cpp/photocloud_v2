@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/service"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,7 +38,9 @@ func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
 func (h *SearchHandler) SearchAssets(c *gin.Context) {
 
 	userID := c.GetInt("userID")
-	//query := c.Query("query")
+	query := c.Query("query")
+
+	fmt.Println("query:", query)
 
 	// Parse filters
 	filters := model.SearchFilters{
@@ -47,14 +51,21 @@ func (h *SearchHandler) SearchAssets(c *gin.Context) {
 		filters.MediaType = model.MediaType(mediaType)
 	}
 
-	if favorite := c.Query("favorite"); favorite != "" {
-		if val, err := strconv.ParseBool(favorite); err == nil {
+	if isFavorite := c.Query("isFavorite"); isFavorite != "" {
+		log.Println("IsFavorite: ")
+		if val, err := strconv.ParseBool(isFavorite); err == nil {
 			filters.IsFavorite = &val
 		}
 	}
+	if isScreenshot := c.Query("isScreenshot"); isScreenshot != "" {
+		log.Println("isScreenshot: ")
+		if val, err := strconv.ParseBool(isScreenshot); err == nil {
+			filters.IsScreenshot = &val
+		}
+	}
 
-	if hidden := c.Query("hidden"); hidden != "" {
-		if val, err := strconv.ParseBool(hidden); err == nil {
+	if isHidden := c.Query("isHidden"); isHidden != "" {
+		if val, err := strconv.ParseBool(isHidden); err == nil {
 			filters.IsHidden = &val
 		}
 	}

@@ -16,6 +16,11 @@ import (
 	"syscall"
 )
 
+// curl -X GET http://localhost:8080/api/v1/search  -H "Content-Type: application/json" -d '{"userId": 3327,"isFavorite": true,"isHidden": false,"limit": 10}'
+// curl -X GET "http://localhost:8080/api/v1/search?userId=3327&isFavorite=true,isScreenshot=true&isHidden=false&limit=10"
+
+// http://localhost:8080/api/v1/search?userId=3327&isFavorite=true&isHidden=false&limit=10
+
 func main() {
 
 	// Load configuration

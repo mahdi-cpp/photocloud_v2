@@ -33,7 +33,7 @@ type PhotoStorage struct {
 	config StorageConfig
 	mu     sync.RWMutex // Protects all indexes and maps
 	cache  *LRUCache
-	//indexers  map[string]Indexer
+
 	metadata  *MetadataManager
 	thumbnail *ThumbnailManager
 
@@ -42,11 +42,14 @@ type PhotoStorage struct {
 	userIndex       map[int][]int    // userID -> []assetID
 	dateIndex       map[string][]int // "YYYY-MM-DD" -> []assetID
 	textIndex       map[string][]int // word -> []assetID
-	favoriteIndex   map[int]bool     // assetID -> isFavorite
 	hiddenIndex     map[int]bool     // assetID -> isHidden
+	favoriteIndex   map[int]bool     // assetID -> isFavorite
 	screenshotIndex map[int]bool     // assetID -> isScreenshot
 	mediaTypeIndex  map[string][]int // mediaType -> []assetID
 	cameraIndex     map[string][]int // cameraModel -> []assetID
+
+	// Indexers
+	indexers map[string]Indexer
 
 	lastID            int
 	indexDirty        bool
@@ -99,6 +102,13 @@ func NewPhotoStorage(cfg StorageConfig) (*PhotoStorage, error) {
 		cameraIndex:       make(map[string][]int),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
+
+		indexers: map[string]Indexer{
+			"text": NewTextIndexer(),
+			"date": NewDateIndexer(),
+			//"mediaType": NewMediaTypeIndexer(),
+			//"camera":    NewCameraIndexer(),
+		},
 	}
 
 	// Ensure directories exist
@@ -250,6 +260,9 @@ func (ps *PhotoStorage) UpdateAsset(id int, update model.AssetUpdate) (*model.PH
 	if update.IsFavorite != nil {
 		asset.IsFavorite = *update.IsFavorite
 	}
+	if update.IsScreenshot != nil {
+		asset.IsScreenshot = *update.IsScreenshot
+	}
 	if update.IsHidden != nil {
 		asset.IsHidden = *update.IsHidden
 	}
@@ -315,8 +328,34 @@ func (ps *PhotoStorage) SearchAssets(filters model.SearchFilters) ([]*model.PHAs
 	defer ps.mu.RUnlock()
 
 	// Start with all assets for user
-	results := ps.userIndex[filters.UserID]
+	//results := ps.userIndex[filters.UserID]
+	results := ps.userIndex[3327]
 	total := len(results)
+
+	// Start with all assets for user
+	//results := ps.indexers["user"].Search(filters.UserID)
+	//total := len(results)
+
+	// Apply filters
+	if filters.Query != "" {
+		results = ps.indexers["text"].Filter(results, filters.Query)
+	}
+	if filters.MediaType != "" {
+		results = ps.indexers["mediaType"].Filter(results, string(filters.MediaType))
+	}
+	if filters.IsFavorite != nil {
+		results = ps.indexers["IsFavorite"].Filter(results, *filters.IsFavorite)
+	}
+	if filters.StartDate != nil || filters.EndDate != nil {
+		dateRange := []time.Time{}
+		if filters.StartDate != nil {
+			dateRange = append(dateRange, *filters.StartDate)
+		}
+		if filters.EndDate != nil {
+			dateRange = append(dateRange, *filters.EndDate)
+		}
+		results = ps.indexers["date"].Filter(results, dateRange)
+	}
 
 	// Apply filters
 	if filters.Query != "" {
@@ -327,6 +366,9 @@ func (ps *PhotoStorage) SearchAssets(filters model.SearchFilters) ([]*model.PHAs
 	}
 	if filters.IsFavorite != nil {
 		results = ps.filterByFavorite(results, *filters.IsFavorite)
+	}
+	if filters.IsScreenshot != nil {
+		results = ps.filterByScreenshot(results, *filters.IsScreenshot)
 	}
 	if filters.StartDate != nil || filters.EndDate != nil {
 		results = ps.filterByDateRange(results, filters.StartDate, filters.EndDate)
@@ -395,6 +437,7 @@ func (ps *PhotoStorage) nextID() int {
 
 // addToIndexes adds an asset to all indexes
 func (ps *PhotoStorage) addToIndexes(asset *model.PHAsset) {
+
 	ps.assetIndex[asset.ID] = asset.Filename
 	ps.userIndex[asset.UserID] = append(ps.userIndex[asset.UserID], asset.ID)
 
@@ -409,11 +452,16 @@ func (ps *PhotoStorage) addToIndexes(asset *model.PHAsset) {
 	}
 
 	ps.favoriteIndex[asset.ID] = asset.IsFavorite
+	ps.screenshotIndex[asset.ID] = asset.IsScreenshot
 	ps.hiddenIndex[asset.ID] = asset.IsHidden
 	ps.mediaTypeIndex[string(asset.MediaType)] = append(ps.mediaTypeIndex[string(asset.MediaType)], asset.ID)
 
 	if asset.Camera != "" {
 		ps.cameraIndex[asset.Camera] = append(ps.cameraIndex[asset.Camera], asset.ID)
+	}
+
+	for _, indexer := range ps.indexers {
+		indexer.Add(asset)
 	}
 
 	ps.indexDirty = true
@@ -476,6 +524,10 @@ func (ps *PhotoStorage) removeFromIndexes(id int) {
 		ps.cameraIndex[camera] = newIds
 	}
 
+	for _, indexer := range ps.indexers {
+		indexer.Remove(id)
+	}
+
 	ps.indexDirty = true
 }
 
@@ -493,15 +545,16 @@ func (ps *PhotoStorage) loadIndex() error {
 	}
 
 	var indexData struct {
-		LastID         int
-		AssetIndex     map[int]string
-		UserIndex      map[int][]int
-		DateIndex      map[string][]int
-		TextIndex      map[string][]int
-		FavoriteIndex  map[int]bool
-		HiddenIndex    map[int]bool
-		MediaTypeIndex map[string][]int
-		CameraIndex    map[string][]int
+		LastID          int
+		AssetIndex      map[int]string
+		UserIndex       map[int][]int
+		DateIndex       map[string][]int
+		TextIndex       map[string][]int
+		FavoriteIndex   map[int]bool
+		ScreenshotIndex map[int]bool
+		HiddenIndex     map[int]bool
+		MediaTypeIndex  map[string][]int
+		CameraIndex     map[string][]int
 	}
 
 	if err := json.Unmarshal(data, &indexData); err != nil {
@@ -514,6 +567,7 @@ func (ps *PhotoStorage) loadIndex() error {
 	ps.dateIndex = indexData.DateIndex
 	ps.textIndex = indexData.TextIndex
 	ps.favoriteIndex = indexData.FavoriteIndex
+	ps.screenshotIndex = indexData.ScreenshotIndex
 	ps.hiddenIndex = indexData.HiddenIndex
 	ps.mediaTypeIndex = indexData.MediaTypeIndex
 	ps.cameraIndex = indexData.CameraIndex
@@ -525,25 +579,27 @@ func (ps *PhotoStorage) loadIndex() error {
 // saveIndex saves the index to disk
 func (ps *PhotoStorage) saveIndex() error {
 	indexData := struct {
-		LastID         int
-		AssetIndex     map[int]string
-		UserIndex      map[int][]int
-		DateIndex      map[string][]int
-		TextIndex      map[string][]int
-		FavoriteIndex  map[int]bool
-		HiddenIndex    map[int]bool
-		MediaTypeIndex map[string][]int
-		CameraIndex    map[string][]int
+		LastID          int
+		AssetIndex      map[int]string
+		UserIndex       map[int][]int
+		DateIndex       map[string][]int
+		TextIndex       map[string][]int
+		FavoriteIndex   map[int]bool
+		ScreenshotIndex map[int]bool
+		HiddenIndex     map[int]bool
+		MediaTypeIndex  map[string][]int
+		CameraIndex     map[string][]int
 	}{
-		LastID:         ps.lastID,
-		AssetIndex:     ps.assetIndex,
-		UserIndex:      ps.userIndex,
-		DateIndex:      ps.dateIndex,
-		TextIndex:      ps.textIndex,
-		FavoriteIndex:  ps.favoriteIndex,
-		HiddenIndex:    ps.hiddenIndex,
-		MediaTypeIndex: ps.mediaTypeIndex,
-		CameraIndex:    ps.cameraIndex,
+		LastID:          ps.lastID,
+		AssetIndex:      ps.assetIndex,
+		UserIndex:       ps.userIndex,
+		DateIndex:       ps.dateIndex,
+		TextIndex:       ps.textIndex,
+		FavoriteIndex:   ps.favoriteIndex,
+		ScreenshotIndex: ps.screenshotIndex,
+		HiddenIndex:     ps.hiddenIndex,
+		MediaTypeIndex:  ps.mediaTypeIndex,
+		CameraIndex:     ps.cameraIndex,
 	}
 
 	data, err := json.Marshal(indexData)
@@ -583,6 +639,8 @@ func (ps *PhotoStorage) rebuildIndex() error {
 			continue
 		}
 
+		//log.Printf()
+
 		// Extract ID from filename
 		filename := file.Name()
 		if !strings.HasSuffix(filename, ".json") {
@@ -605,7 +663,7 @@ func (ps *PhotoStorage) rebuildIndex() error {
 		// Verify asset file exists
 		assetPath := filepath.Join(ps.config.AssetsDir, asset.Filename)
 		if _, err := os.Stat(assetPath); err != nil {
-			log.Printf("Asset file missing for %d: %s", id, asset.Filename)
+			log.Printf("Asset file missing for %d: %s", id, asset.ID)
 			continue
 		}
 
@@ -765,6 +823,17 @@ func (ps *PhotoStorage) filterByFavorite(assetIDs []int, favorite bool) []int {
 	filtered := make([]int, 0, len(assetIDs))
 	for _, id := range assetIDs {
 		if ps.favoriteIndex[id] == favorite {
+			filtered = append(filtered, id)
+		}
+	}
+	return filtered
+}
+
+// filterByScreenshot filters assets by favorite status
+func (ps *PhotoStorage) filterByScreenshot(assetIDs []int, screenshot bool) []int {
+	filtered := make([]int, 0, len(assetIDs))
+	for _, id := range assetIDs {
+		if ps.screenshotIndex[id] == screenshot {
 			filtered = append(filtered, id)
 		}
 	}
