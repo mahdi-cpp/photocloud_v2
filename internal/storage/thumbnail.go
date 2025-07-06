@@ -1,16 +1,15 @@
-package imaging
+package storage
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"image/jpeg"
 	"image/png"
 	"io"
 	"mime/multipart"
 	"os"
 	"os/exec"
-	"photocloud_v2/internal/domain/model"
-	"photocloud_v2/internal/storage"
 	"sync"
 
 	"github.com/disintegration/imaging"
@@ -22,7 +21,7 @@ type ThumbnailService struct {
 	defaultHeight  int
 	jpegQuality    int
 	pngCompression int
-	storage        storage.ThumbnailStorage
+	storage        ThumbnailStorage
 	videoEnabled   bool
 	ffmpegPath     string
 	mu             sync.Mutex
@@ -32,7 +31,7 @@ type ThumbnailService struct {
 func NewThumbnailService(
 	defaultWidth, defaultHeight int,
 	jpegQuality int,
-	storage storage.ThumbnailStorage,
+	storage ThumbnailStorage,
 	videoEnabled bool,
 	ffmpegPath string,
 ) *ThumbnailService {

@@ -1,11 +1,10 @@
 package handler
 
 import (
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,12 +1,11 @@
 package handler
 
 import (
+	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/internal/service"
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

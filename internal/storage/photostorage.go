@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -16,9 +17,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/imaging"
 )
 
 var (
@@ -163,14 +161,14 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 	}
 
 	// Initialize the MetadataExtractor with the path to exiftool
-	extractor := imaging.NewMetadataExtractor("/usr/local/bin/exiftool")
+	extractor := NewMetadataExtractor("/usr/local/bin/exiftool")
 
 	// Extract metadata
 	width, height, camera, err := extractor.ExtractMetadata(assetPath)
 	if err != nil {
 		log.Printf("Metadata extraction failed: %v", err)
 	}
-	mediaType := imaging.GetMediaType(ext)
+	mediaType := GetMediaType(ext)
 
 	// Create asset
 	asset := &model.PHAsset{

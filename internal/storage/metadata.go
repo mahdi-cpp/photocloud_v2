@@ -1,12 +1,12 @@
-package imaging
+package storage
 
 import (
 	"fmt"
+	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"image"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"photocloud_v2/internal/domain/model"
 	"strconv"
 	"strings"
 )
