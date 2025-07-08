@@ -43,7 +43,7 @@ func (h *SearchHandler) SearchAssets(c *gin.Context) {
 	fmt.Println("query:", query)
 
 	// Parse filters
-	filters := model.SearchFilters{
+	filters := model.AssetSearchFilters{
 		UserID: userID,
 	}
 
@@ -134,7 +134,7 @@ func (h *SearchHandler) AdvancedSearch(c *gin.Context) {
 		return
 	}
 
-	filters := model.SearchFilters{
+	filters := model.AssetSearchFilters{
 		UserID:      userID,
 		Query:       req.Query,
 		MediaType:   model.MediaType(req.MediaType),

@@ -16,7 +16,7 @@ storage:
   assets_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/assets"       # Original asset storage
   metadata_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/metadata"   # JSON metadata storage
   thumbnails_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/thumbnails" # Generated thumbnails
-  index_file: "/var/cloud/applications/Photos/mahdi_abdolmaleki/index.dat"    # Serialized index data
+  index_file: "/var/cloud/applications/Photos/mahdi_abdolmaleki/index.json"    # Serialized index data
   cache:
     size: 1000     # Number of assets to keep in LRU cache
     stats_interval: "5m" # Cache stats collection interval

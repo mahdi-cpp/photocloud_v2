@@ -53,10 +53,10 @@ func (h *SystemHandler) RebuildIndex(c *gin.Context) {
 
 // SystemStatusResponse represents system health data
 type SystemStatusResponse struct {
-	Status    string               `json:"status"`
-	Timestamp int64                `json:"timestamp"`
-	Stats     storage.StorageStats `json:"stats"`
-	Index     storage.IndexStatus  `json:"index"`
+	Status    string              `json:"status"`
+	Timestamp int64               `json:"timestamp"`
+	Stats     storage.Stats       `json:"stats"`
+	Index     storage.IndexStatus `json:"index"`
 }
 
 // StorageStats represents storage system statistics

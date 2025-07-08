@@ -40,7 +40,7 @@ func (s *AssetService) SearchAssets(
 	dateRange []time.Time,
 ) ([]*model.PHAsset, error) {
 
-	filters := model.SearchFilters{
+	filters := model.AssetSearchFilters{
 		UserID:    userID,
 		Query:     query,
 		MediaType: model.MediaType(mediaType),

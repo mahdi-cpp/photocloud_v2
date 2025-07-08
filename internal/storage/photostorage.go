@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage/indexer"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -30,7 +31,7 @@ var (
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
-	config StorageConfig
+	config Config
 	mu     sync.RWMutex // Protects all indexes and maps
 	cache  *LRUCache
 
@@ -49,7 +50,7 @@ type PhotoStorage struct {
 	cameraIndex     map[string][]int // cameraModel -> []assetID
 
 	// Indexers
-	indexers map[string]Indexer
+	indexers map[string]indexer.Indexer
 
 	lastID            int
 	indexDirty        bool
@@ -59,11 +60,11 @@ type PhotoStorage struct {
 
 	// Stats
 	statsMu sync.Mutex
-	stats   StorageStats
+	stats   Stats
 }
 
-// StorageConfig defines storage system configuration
-type StorageConfig struct {
+// Config defines storage system configuration
+type Config struct {
 	AssetsDir     string
 	MetadataDir   string
 	ThumbnailsDir string
@@ -72,8 +73,8 @@ type StorageConfig struct {
 	MaxUploadSize int64
 }
 
-// StorageStats holds storage system statistics
-type StorageStats struct {
+// Stats holds storage system statistics
+type Stats struct {
 	TotalAssets   int
 	CacheHits     int64
 	CacheMisses   int64
@@ -82,7 +83,8 @@ type StorageStats struct {
 }
 
 // NewPhotoStorage creates a new storage instance
-func NewPhotoStorage(cfg StorageConfig) (*PhotoStorage, error) {
+func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
+
 	// Create context for background workers
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -103,11 +105,15 @@ func NewPhotoStorage(cfg StorageConfig) (*PhotoStorage, error) {
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 
-		indexers: map[string]Indexer{
-			"text": NewTextIndexer(),
-			"date": NewDateIndexer(),
+		indexers: map[string]indexer.Indexer{
+			"text": indexer.NewTextIndexer(),
+			"date": indexer.NewDateIndexer(),
 			//"mediaType": NewMediaTypeIndexer(),
 			//"camera":    NewCameraIndexer(),
+			"favorite":   indexer.NewBoolIndexer("IsFavorite"),
+			"hidden":     indexer.NewBoolIndexer("IsHidden"),
+			"screenshot": indexer.NewBoolIndexer("IsScreenshot"),
+			"landscape":  indexer.NewBoolIndexer("IsLandscape"),
 		},
 	}
 
@@ -321,8 +327,36 @@ func (ps *PhotoStorage) DeleteAsset(id int) error {
 	return nil
 }
 
+// GetSystemStats returns storage statistics
+func (ps *PhotoStorage) GetSystemStats() Stats {
+	ps.statsMu.Lock()
+	defer ps.statsMu.Unlock()
+	return ps.stats
+}
+
+// GetIndexStatus returns index health information
+func (ps *PhotoStorage) GetIndexStatus() IndexStatus {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	return IndexStatus{
+		LastRebuild:   ps.lastRebuild,
+		AssetCount:    len(ps.assetIndex),
+		TextIndexSize: len(ps.textIndex),
+		DateIndexSize: len(ps.dateIndex),
+		Dirty:         ps.indexDirty,
+	}
+}
+
+// RebuildIndex rebuilds the index from metadata
+func (ps *PhotoStorage) RebuildIndex() error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	return ps.rebuildIndex()
+}
+
 // SearchAssets searches assets based on criteria
-func (ps *PhotoStorage) SearchAssets(filters model.SearchFilters) ([]*model.PHAsset, int, error) {
+func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
 
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
@@ -346,6 +380,10 @@ func (ps *PhotoStorage) SearchAssets(filters model.SearchFilters) ([]*model.PHAs
 	if filters.IsFavorite != nil {
 		results = ps.indexers["IsFavorite"].Filter(results, *filters.IsFavorite)
 	}
+	if filters.IsLandscape != nil {
+		results = ps.indexers["landscape"].Filter(results, *filters.IsLandscape)
+	}
+
 	if filters.StartDate != nil || filters.EndDate != nil {
 		dateRange := []time.Time{}
 		if filters.StartDate != nil {
@@ -395,34 +433,6 @@ func (ps *PhotoStorage) SearchAssets(filters model.SearchFilters) ([]*model.PHAs
 	}
 
 	return assets[start:end], total, nil
-}
-
-// GetSystemStats returns storage statistics
-func (ps *PhotoStorage) GetSystemStats() StorageStats {
-	ps.statsMu.Lock()
-	defer ps.statsMu.Unlock()
-	return ps.stats
-}
-
-// GetIndexStatus returns index health information
-func (ps *PhotoStorage) GetIndexStatus() IndexStatus {
-	ps.mu.RLock()
-	defer ps.mu.RUnlock()
-
-	return IndexStatus{
-		LastRebuild:   ps.lastRebuild,
-		AssetCount:    len(ps.assetIndex),
-		TextIndexSize: len(ps.textIndex),
-		DateIndexSize: len(ps.dateIndex),
-		Dirty:         ps.indexDirty,
-	}
-}
-
-// RebuildIndex rebuilds the index from metadata
-func (ps *PhotoStorage) RebuildIndex() error {
-	ps.mu.Lock()
-	defer ps.mu.Unlock()
-	return ps.rebuildIndex()
 }
 
 // ========================
@@ -576,8 +586,27 @@ func (ps *PhotoStorage) loadIndex() error {
 	return nil
 }
 
+type SerializableIndexer interface {
+	indexer.Indexer
+	Serialize() ([]byte, error)
+	Deserialize(data []byte) error
+}
+
 // saveIndex saves the index to disk
 func (ps *PhotoStorage) saveIndex() error {
+
+	// Serialize indexers first
+	indexersData := make(map[string][]byte)
+	for name, indexer := range ps.indexers {
+		if serializable, ok := indexer.(SerializableIndexer); ok {
+			data, err := serializable.Serialize()
+			if err != nil {
+				return fmt.Errorf("failed to serialize indexer %s: %w", name, err)
+			}
+			indexersData[name] = data
+		}
+	}
+
 	indexData := struct {
 		LastID          int
 		AssetIndex      map[int]string
@@ -589,6 +618,7 @@ func (ps *PhotoStorage) saveIndex() error {
 		HiddenIndex     map[int]bool
 		MediaTypeIndex  map[string][]int
 		CameraIndex     map[string][]int
+		Indexers        map[string]string `json:"Indexers"` // Simplified for readability
 	}{
 		LastID:          ps.lastID,
 		AssetIndex:      ps.assetIndex,
@@ -600,12 +630,19 @@ func (ps *PhotoStorage) saveIndex() error {
 		HiddenIndex:     ps.hiddenIndex,
 		MediaTypeIndex:  ps.mediaTypeIndex,
 		CameraIndex:     ps.cameraIndex,
+		Indexers:        ps.serializeIndexersForOutput(), // Add this function
 	}
 
-	data, err := json.Marshal(indexData)
+	// Use MarshalIndent for pretty-printed JSON
+	data, err := json.MarshalIndent(indexData, "", "\t")
 	if err != nil {
 		return err
 	}
+
+	//data, err := json.Marshal(indexData)
+	//if err != nil {
+	//	return err
+	//}
 
 	tmpFile := ps.config.IndexFile + ".tmp"
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
@@ -613,6 +650,16 @@ func (ps *PhotoStorage) saveIndex() error {
 	}
 
 	return os.Rename(tmpFile, ps.config.IndexFile)
+}
+
+// Helper to simplify indexers for JSON output
+func (ps *PhotoStorage) serializeIndexersForOutput() map[string]string {
+	output := make(map[string]string)
+	for name := range ps.indexers {
+		// Just show the type for readability
+		output[name] = fmt.Sprintf("%T", ps.indexers[name])
+	}
+	return output
 }
 
 // rebuildIndex reconstructs the index from metadata files
@@ -638,8 +685,6 @@ func (ps *PhotoStorage) rebuildIndex() error {
 		if file.IsDir() {
 			continue
 		}
-
-		//log.Printf()
 
 		// Extract ID from filename
 		filename := file.Name()

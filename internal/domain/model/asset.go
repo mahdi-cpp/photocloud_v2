@@ -25,15 +25,8 @@ type PHAsset struct {
 	IsHidden         bool      `json:"isHidden"`
 }
 
-type AssetUpdate struct {
-	Filename     *string `json:"filename,omitempty"`
-	IsFavorite   *bool   `json:"isFavorite,omitempty"`
-	IsScreenshot *bool   `json:"IsScreenshot,omitempty"`
-	IsHidden     *bool   `json:"isHidden,omitempty"`
-}
-
-// SearchFilters defines search parameters
-type SearchFilters struct {
+// AssetSearchFilters defines search parameters
+type AssetSearchFilters struct {
 	UserID       int
 	Query        string
 	MediaType    MediaType
@@ -43,6 +36,14 @@ type SearchFilters struct {
 	IsFavorite   *bool
 	IsScreenshot *bool
 	IsHidden     *bool
+	IsLandscape  *bool
 	Limit        int
 	Offset       int
+}
+
+type AssetUpdate struct {
+	Filename     *string `json:"filename,omitempty"`
+	IsFavorite   *bool   `json:"isFavorite,omitempty"`
+	IsScreenshot *bool   `json:"IsScreenshot,omitempty"`
+	IsHidden     *bool   `json:"isHidden,omitempty"`
 }

@@ -71,6 +71,7 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 // @Success 200 {array} model.PHAsset
 // @Router /search [get]
 func (h *AssetHandler) SearchAssets(c *gin.Context) {
+
 	userID := c.GetInt("userID")
 	query := c.Query("query")
 	mediaType := c.Query("type")

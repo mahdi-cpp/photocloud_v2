@@ -1,4 +1,4 @@
-package storage
+package indexer
 
 import (
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"

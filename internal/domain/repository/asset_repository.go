@@ -23,7 +23,7 @@ type AssetRepository interface {
 	CountUserAssets(ctx context.Context, userID int) (int, error)
 
 	// Search operations
-	SearchAssets(ctx context.Context, filters model.SearchFilters) ([]*model.PHAsset, int, error)
+	SearchAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error)
 	SuggestSearchTerms(ctx context.Context, userID int, prefix string, limit int) ([]string, error)
 
 	// System operations

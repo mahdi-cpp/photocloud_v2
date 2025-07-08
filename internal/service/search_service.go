@@ -14,7 +14,7 @@ func NewSearchService(repo *storage.AssetRepositoryImpl) *SearchService {
 	return &SearchService{repo: repo}
 }
 
-func (s *SearchService) SearchAssets(ctx context.Context, filters model.SearchFilters) ([]*model.PHAsset, int, error) {
+func (s *SearchService) SearchAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
 
 	assets, total, err := s.repo.SearchAssets(ctx, filters)
 

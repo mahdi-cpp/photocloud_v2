@@ -120,7 +120,7 @@ func loadConfig() (*config.Config, error) {
 func initStorage(cfg *config.Config) (*storage.PhotoStorage, error) {
 
 	// Create storage configuration
-	storageCfg := storage.StorageConfig{
+	storageCfg := storage.Config{
 		AssetsDir:     cfg.Storage.AssetsDir,
 		MetadataDir:   cfg.Storage.MetadataDir,
 		ThumbnailsDir: cfg.Storage.ThumbnailsDir,
