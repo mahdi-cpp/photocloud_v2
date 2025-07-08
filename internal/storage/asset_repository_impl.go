@@ -29,9 +29,9 @@ func (r *AssetRepositoryImpl) CreateAsset(ctx context.Context, asset *model.PHAs
 	asset.ID = createdAsset.ID
 	asset.CreationDate = createdAsset.CreationDate
 	asset.MediaType = createdAsset.MediaType
-	asset.Width = createdAsset.Width
-	asset.Height = createdAsset.Height
-	asset.Camera = createdAsset.Camera
+	asset.PixelWidth = createdAsset.PixelWidth
+	asset.PixelHeight = createdAsset.PixelHeight
+	asset.CameraModel = createdAsset.CameraModel
 
 	return asset, nil
 }
@@ -111,6 +111,10 @@ func (r *AssetRepositoryImpl) CountUserAssets(ctx context.Context, userID int) (
 
 func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
 	return r.storage.SearchAssets(filters)
+}
+
+func (r *AssetRepositoryImpl) SearchAssetsV2(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+	return r.storage.SearchAssetsV2(filters)
 }
 
 func (r *AssetRepositoryImpl) SuggestSearchTerms(ctx context.Context, userID int, prefix string, limit int) ([]string, error) {

@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/config"
 	"github.com/mahdi-cpp/photocloud_v2/internal/api/handler"
-	"github.com/mahdi-cpp/photocloud_v2/internal/service"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"github.com/spf13/viper"
 	"log"
@@ -20,6 +19,8 @@ import (
 // curl -X GET "http://localhost:8080/api/v1/search?userId=3327&isFavorite=true,isScreenshot=true&isHidden=false&limit=10"
 
 // http://localhost:8080/api/v1/search?userId=3327&isFavorite=true&isHidden=false&limit=10
+
+// curl -X POST http://localhost:8080/api/v1/search/advanced_v2 -H "Content-Type: application/json" -d '{ "mediaType": "image", "isFavorite": true, "albums": [1, 5, 10] }'
 
 func main() {
 
@@ -39,8 +40,8 @@ func main() {
 	assetRepo := storage.NewAssetRepository(photoStorage)
 
 	// Initialize services
-	assetService := service.NewAssetService(assetRepo)
-	searchService := service.NewSearchService(assetRepo)
+	//assetService := service.NewAssetService(assetRepo)
+	//searchService := service.NewSearchService(assetRepo)
 
 	//thumbnailService := imaging.NewThumbnailService(
 	//	cfg.Media.Thumbnails.DefaultWidth,
@@ -50,8 +51,8 @@ func main() {
 	//)
 
 	// Create handlers
-	assetHandler := handler.NewAssetHandler(assetService)
-	searchHandler := handler.NewSearchHandler(searchService)
+	assetHandler := handler.NewAssetHandler(assetRepo)
+	searchHandler := handler.NewSearchHandler(assetRepo)
 	systemHandler := handler.NewSystemHandler(photoStorage)
 
 	// Create Gin router
@@ -210,7 +211,10 @@ func createRouter(
 
 		// Search routes
 		api.GET("/search", searchHandler.SearchAssets)
+
 		api.POST("/search/advanced", searchHandler.AdvancedSearch)
+		api.POST("/search/advanced_v2", searchHandler.AdvancedSearchV2)
+
 		//api.GET("/search/suggest", searchHandler.SuggestSearchTerms)
 
 		// System routes

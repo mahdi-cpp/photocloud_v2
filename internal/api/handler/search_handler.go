@@ -3,7 +3,7 @@ package handler
 import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/internal/service"
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,11 +13,11 @@ import (
 )
 
 type SearchHandler struct {
-	searchService *service.SearchService
+	assetRepo *storage.AssetRepositoryImpl
 }
 
-func NewSearchHandler(searchService *service.SearchService) *SearchHandler {
-	return &SearchHandler{searchService: searchService}
+func NewSearchHandler(assetRepo *storage.AssetRepositoryImpl) *SearchHandler {
+	return &SearchHandler{assetRepo: assetRepo}
 }
 
 // SearchAssets godoc
@@ -103,7 +103,7 @@ func (h *SearchHandler) SearchAssets(c *gin.Context) {
 	}
 
 	// Execute search
-	assets, total, err := h.searchService.SearchAssets(c, filters)
+	assets, total, err := h.assetRepo.SearchAssets(c, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
@@ -147,14 +147,69 @@ func (h *SearchHandler) AdvancedSearch(c *gin.Context) {
 		Offset:      req.Offset,
 	}
 
-	assets, total, err := h.searchService.SearchAssets(c, filters)
+	assets, total, err := h.assetRepo.SearchAssets(c, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
 
+	// Apply pagination
+	start := filters.Offset
+	if start > len(assets) {
+		start = len(assets)
+	}
+
+	end := start + filters.Limit
+	if end > len(assets) {
+		end = len(assets)
+	}
+
 	c.JSON(http.StatusOK, SearchResponse{
-		Results: assets,
+		Results: assets[start:end],
+		Total:   total,
+		Limit:   filters.Limit,
+		Offset:  filters.Offset,
+	})
+}
+
+// AdvancedSearchV2 godoc
+// @Summary Advanced search with multiple criteria
+// @Description JSON-based search with complex filters
+// @Accept json
+// @Produce json
+// @Param search body AdvancedSearchRequest true "Search criteria"
+// @Success 200 {array} model.PHAsset
+// @Router /search/advanced [post]
+func (h *SearchHandler) AdvancedSearchV2(c *gin.Context) {
+	//userID := c.GetInt("userID")
+
+	fmt.Println("AdvancedSearchV2")
+
+	var filters model.AssetSearchFilters
+	if err := c.ShouldBindJSON(&filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	assets, total, err := h.assetRepo.SearchAssetsV2(c, filters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	// Apply pagination
+	start := filters.Offset
+	if start > len(assets) {
+		start = len(assets)
+	}
+
+	end := start + filters.Limit
+	if end > len(assets) {
+		end = len(assets)
+	}
+
+	c.JSON(http.StatusOK, SearchResponse{
+		Results: assets[start:end],
 		Total:   total,
 		Limit:   filters.Limit,
 		Offset:  filters.Offset,

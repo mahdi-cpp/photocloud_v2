@@ -11,6 +11,7 @@ import (
 	_ "image/png"
 	"io"
 	"log"
+	"math"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -28,6 +29,12 @@ var (
 	ErrMetadataCorrupted = errors.New("metadata corrupted")
 	ErrIndexCorrupted    = errors.New("index corrupted")
 )
+
+const (
+	earthRadius = 6371 // Earth's radius in km
+)
+
+var assets []model.PHAsset
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
@@ -130,6 +137,11 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		return nil, fmt.Errorf("failed to initialize index: %w", err)
 	}
 
+	assets2, err := ps.metadata.LoadAllMetadata()
+	if err != nil {
+	}
+	assets = assets2
+
 	// Start background maintenance
 	go ps.periodicMaintenance()
 
@@ -193,9 +205,9 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 		Filename:     filename,
 		CreationDate: time.Now(),
 		MediaType:    mediaType,
-		Width:        width,
-		Height:       height,
-		Camera:       camera,
+		PixelWidth:   width,
+		PixelHeight:  height,
+		CameraModel:  camera,
 	}
 
 	// Save metadata
@@ -435,9 +447,246 @@ func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model
 	return assets[start:end], total, nil
 }
 
+// SearchAssetsV2 searches assets based on criteria
+func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	startTime := time.Now()
+
+	// Step 1: Build criteria from filters
+	criteria := buildCriteria(filters)
+
+	// Step 2: Find all matching assets (store pointers to original assets)
+	var matches []*model.PHAsset
+	totalCount := 0
+
+	for i := range assets {
+		if criteria(assets[i]) {
+			matches = append(matches, &assets[i])
+			totalCount++
+		}
+	}
+
+	// Step 3: Apply pagination
+	start := filters.Offset
+	if start < 0 {
+		start = 0
+	}
+	if start > len(matches) {
+		start = len(matches)
+	}
+
+	end := start + filters.Limit
+	if end > len(matches) || filters.Limit <= 0 {
+		end = len(matches)
+	}
+
+	paginated := matches[start:end]
+
+	// Log performance
+	duration := time.Since(startTime)
+	log.Printf("SearchAssets: scanned %d assets, found %d matches, returned %d (in %v)", len(assets), totalCount, len(paginated), duration)
+
+	return paginated, totalCount, nil
+}
+
 // ========================
 // Internal Implementation
 // ========================
+
+// IndexedItem represents an item with its index
+type IndexedItem[T any] struct {
+	Index int
+	Value T
+}
+
+// searchCriteria defines a function type for service conditions
+type searchCriteria[T any] func(T) bool
+
+func Assets(assets []model.PHAsset, filters model.AssetSearchFilters) []IndexedItem[model.PHAsset] {
+
+	startTime := time.Now() // Capture start time
+
+	// Step 1: Build criteria from filters
+	criteria := buildCriteria(filters)
+
+	// Step 2: Find all matching assets
+	results := search(assets, criteria)
+
+	// Step 3: Apply pagination
+	start := filters.Offset
+	if start < 0 {
+		start = 0
+	}
+	if start > len(results) {
+		return []IndexedItem[model.PHAsset]{} // Offset beyond results
+	}
+
+	end := start + filters.Limit
+	if end > len(results) || filters.Limit <= 0 {
+		end = len(results) // Ignore limit if <=0 or too large
+	}
+
+	// Calculate and log execution duration
+	duration := time.Since(startTime)
+	log.Printf("Assets executed in %v. Scanned %d assets, returned %d results", duration, len(assets), len(results))
+	fmt.Println("")
+
+	return results[start:end]
+}
+
+// search performs a generic service on a slice and returns matched indices
+func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
+	var results []IndexedItem[T]
+
+	for i, item := range slice {
+		if criteria(item) {
+			results = append(results, IndexedItem[T]{Index: i, Value: item})
+		}
+	}
+	return results
+}
+
+// Helper function to check if slice contains value
+func contains(slice []int, value int) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsset] {
+
+	return func(asset model.PHAsset) bool {
+
+		// Filter by UserID (if non-zero)
+		if filters.UserID != 0 && asset.UserID != filters.UserID {
+			return false
+		}
+
+		// Filter by Query (case-insensitive service in Filename/URL)
+		if filters.Query != "" {
+			query := strings.ToLower(filters.Query)
+			filename := strings.ToLower(asset.Filename)
+			url := strings.ToLower(asset.Url)
+			if !strings.Contains(filename, query) && !strings.Contains(url, query) {
+				return false
+			}
+		}
+
+		//Filter by MediaType (if specified)
+		if filters.MediaType != "" && asset.MediaType != filters.MediaType {
+			return false
+		}
+
+		// Filter by CameraModel (exact match)
+		if filters.CameraMake != "" && asset.CameraMake != filters.CameraMake {
+			return false
+		}
+
+		if filters.CameraModel != "" && asset.CameraModel != filters.CameraModel {
+			return false
+		}
+
+		// Filter by CreationDate range
+		if filters.StartDate != nil && asset.CreationDate.Before(*filters.StartDate) {
+			return false
+		}
+		if filters.EndDate != nil && asset.CreationDate.After(*filters.EndDate) {
+			return false
+		}
+
+		// Filter by boolean flags (if specified)
+		if filters.IsFavorite != nil && asset.IsFavorite != *filters.IsFavorite {
+			return false
+		}
+		if filters.IsScreenshot != nil && asset.IsScreenshot != *filters.IsScreenshot {
+			return false
+		}
+		if filters.IsHidden != nil && asset.IsHidden != *filters.IsHidden {
+			return false
+		}
+
+		// Filter by  int
+		if filters.PixelWidth != 0 && asset.PixelWidth != filters.PixelWidth {
+			return false
+		}
+
+		if filters.PixelHeight != 0 && asset.PixelHeight != filters.PixelHeight {
+			return false
+		}
+
+		// Filter by landscape orientation
+		if filters.IsLandscape != nil {
+			isLandscape := asset.PixelWidth > asset.PixelHeight
+			if isLandscape != *filters.IsLandscape {
+				return false
+			}
+		}
+
+		// Album filtering (if albums are specified)
+		//if len(filters.Albums) > 0 {
+		//	found := false
+		//	for _, albumID := range filters.Albums {
+		//		if contains(asset.Albums, albumID) {
+		//			found = true
+		//			break
+		//		}
+		//	}
+		//	if !found {
+		//		return false
+		//	}
+		//}
+
+		// Album filtering
+		if len(filters.Albums) > 0 {
+			found := false
+			for _, albumID := range filters.Albums {
+				for _, assetAlbumID := range asset.Albums {
+					if assetAlbumID == albumID {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+
+		// Location filtering
+		if len(asset.Location) == 2 {
+
+			// Near point + radius search
+			if len(filters.NearPoint) == 2 && filters.WithinRadius > 0 {
+				distance := haversineDistance(
+					filters.NearPoint[0], filters.NearPoint[1],
+					asset.Location[0], asset.Location[1],
+				)
+				if distance > filters.WithinRadius {
+					return false
+				}
+			}
+
+			// Bounding box search
+			if len(filters.BoundingBox) == 4 {
+				if !isInBoundingBox(asset.Location, filters.BoundingBox) {
+					return false
+				}
+			}
+		}
+
+		return true // Asset matches all active filters
+	}
+}
+
+//------------
 
 // nextID generates the next asset ID
 func (ps *PhotoStorage) nextID() int {
@@ -466,8 +715,8 @@ func (ps *PhotoStorage) addToIndexes(asset *model.PHAsset) {
 	ps.hiddenIndex[asset.ID] = asset.IsHidden
 	ps.mediaTypeIndex[string(asset.MediaType)] = append(ps.mediaTypeIndex[string(asset.MediaType)], asset.ID)
 
-	if asset.Camera != "" {
-		ps.cameraIndex[asset.Camera] = append(ps.cameraIndex[asset.Camera], asset.ID)
+	if asset.CameraModel != "" {
+		ps.cameraIndex[asset.CameraModel] = append(ps.cameraIndex[asset.CameraModel], asset.ID)
 	}
 
 	for _, indexer := range ps.indexers {
@@ -935,4 +1184,27 @@ func (ps *PhotoStorage) Close() {
 	if ps.indexDirty {
 		ps.saveIndex()
 	}
+}
+
+// haversineDistance calculates distance between two points in km
+func haversineDistance(lat1, lon1, lat2, lon2 float64) float64 {
+	dLat := (lat2 - lat1) * math.Pi / 180
+	dLon := (lon2 - lon1) * math.Pi / 180
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
+			math.Sin(dLon/2)*math.Sin(dLon/2)
+
+	return earthRadius * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+}
+
+// isInBoundingBox checks if point is within rectangular bounds
+func isInBoundingBox(point []float64, bbox []float64) bool {
+	if len(point) < 2 || len(bbox) < 4 {
+		return false
+	}
+	return point[0] >= bbox[0] && // minLat
+		point[0] <= bbox[2] && // maxLat
+		point[1] >= bbox[1] && // minLon
+		point[1] <= bbox[3] // maxLon
 }

@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"github.com/mahdi-cpp/photocloud_v2/internal/service"
+	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,11 +11,11 @@ import (
 )
 
 type AssetHandler struct {
-	assetService *service.AssetService
+	assetRepo *storage.AssetRepositoryImpl
 }
 
-func NewAssetHandler(assetService *service.AssetService) *AssetHandler {
-	return &AssetHandler{assetService: assetService}
+func NewAssetHandler(assetRepo *storage.AssetRepositoryImpl) *AssetHandler {
+	return &AssetHandler{assetRepo: assetRepo}
 }
 
 // UploadAsset godoc
@@ -32,11 +33,22 @@ func (h *AssetHandler) UploadAsset(c *gin.Context) {
 	}
 	defer file.Close()
 
-	asset, err := h.assetService.UploadAsset(c, userID, file, header)
+	// Create asset metadata
+	asset := &model.PHAsset{
+		UserID:   userID,
+		Filename: header.Filename,
+	}
+
+	asset, err = h.assetRepo.CreateAsset(c, asset, file, header)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 		return
 	}
+	//asset, err := h.assetRepo.UploadAsset(c, userID, file, header)
+	//if err != nil {
+	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
+	//	return
+	//}
 
 	c.JSON(http.StatusCreated, asset)
 }
@@ -53,7 +65,7 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 		return
 	}
 
-	asset, err := h.assetService.GetAsset(c, id)
+	asset, err := h.assetRepo.GetAsset(c, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
 		return
@@ -88,7 +100,23 @@ func (h *AssetHandler) SearchAssets(c *gin.Context) {
 		}
 	}
 
-	assets, err := h.assetService.SearchAssets(c, userID, query, mediaType, dateRange)
+	filters := model.AssetSearchFilters{
+		UserID:    userID,
+		Query:     query,
+		MediaType: model.MediaType(mediaType),
+	}
+
+	if len(dateRange) > 0 {
+		filters.StartDate = &dateRange[0]
+	}
+	if len(dateRange) > 1 {
+		filters.EndDate = &dateRange[1]
+	}
+
+	//assets, _, err := s.repo.SearchAssets(ctx, filters)
+	//return assets, err
+
+	assets, _, err := h.assetRepo.SearchAssets(c, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
