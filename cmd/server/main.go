@@ -50,13 +50,18 @@ func main() {
 	//	photoStorage,
 	//)
 
+	albumManager := storage.NewAlbumManager(cfg.Storage.AlbumCollectionFile)
+	tripManager := storage.NewTripManager(cfg.Storage.TripCollectionFile)
+
 	// Create handlers
 	assetHandler := handler.NewAssetHandler(assetRepo)
+	albumHandler := handler.NewAlbumHandler(albumManager)
+	tripHandler := handler.NewTripHandler(tripManager)
 	searchHandler := handler.NewSearchHandler(assetRepo)
 	systemHandler := handler.NewSystemHandler(photoStorage)
 
 	// Create Gin router
-	router := createRouter(cfg, assetHandler, searchHandler, systemHandler)
+	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, searchHandler, systemHandler)
 
 	// Create logger
 	//logger, _ := zap.NewProduction()
@@ -168,6 +173,8 @@ func initStorage(cfg *config.Config) (*storage.PhotoStorage, error) {
 func createRouter(
 	cfg *config.Config,
 	assetHandler *handler.AssetHandler,
+	albumHandler *handler.AlbumHandler,
+	tripHandler *handler.TripHandler,
 	searchHandler *handler.SearchHandler,
 	systemHandler *handler.SystemHandler,
 ) *gin.Engine {
@@ -203,8 +210,15 @@ func createRouter(
 		// Asset routes
 		api.POST("/assets", assetHandler.UploadAsset)
 		api.GET("/assets/:id", assetHandler.GetAsset)
+		api.POST("/assets/update", assetHandler.UpdateAssets)
 
-		//api.PUT("/assets/:id", assetHandler.UpdateAsset)
+		api.GET("/album/getList", albumHandler.GetList)
+		api.POST("/album/create", albumHandler.Create)
+
+		api.GET("/trip/getList", tripHandler.GetList)
+		api.POST("/trip/create", tripHandler.Create)
+
+		//api.PUT("/assets/:id", assetHandler.UpdateAssets)
 		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)
 		//api.GET("/assets/:id/content", assetHandler.GetAssetContent)
 		//api.GET("/assets/:id/thumbnail", assetHandler.GetAssetThumbnail)

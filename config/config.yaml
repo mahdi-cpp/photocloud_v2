@@ -7,16 +7,20 @@ server:
   max_body_size: "100MB" # Max request body size
   cors:
     enabled: true
-    allow_origins: ["*"]
-    allow_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    allow_headers: ["Origin", "Content-Type", "Authorization"]
+    allow_origins: [ "*" ]
+    allow_methods: [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ]
+    allow_headers: [ "Origin", "Content-Type", "Authorization" ]
 
 # Storage system configuration
 storage:
   assets_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/assets"       # Original asset storage
-  metadata_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/metadata"   # JSON metadata storage
+  //metadata_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/metadata"   # JSON metadata storage
+  metadata_dir: "/media/mahdi/Cloud/apps/mahdi_abdolmaleki/metadata"
   thumbnails_dir: "/var/cloud/applications/Photos/mahdi_abdolmaleki/thumbnails" # Generated thumbnails
   index_file: "/var/cloud/applications/Photos/mahdi_abdolmaleki/index.json"    # Serialized index data
+  albumCollection_file: "/media/mahdi/Cloud/apps/mahdi_abdolmaleki/albumCollection_file.json"    # Serialized albumCollection_file data
+  tripCollection_file: "/media/mahdi/Cloud/apps/mahdi_abdolmaleki/tripCollection_file.json"
+
   cache:
     size: 1000     # Number of assets to keep in LRU cache
     stats_interval: "5m" # Cache stats collection interval

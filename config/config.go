@@ -68,13 +68,15 @@ type CORSConfig struct {
 
 // StorageConfig defines storage settings
 type StorageConfig struct {
-	AssetsDir     string       `mapstructure:"assets_dir"`
-	MetadataDir   string       `mapstructure:"metadata_dir"`
-	ThumbnailsDir string       `mapstructure:"thumbnails_dir"`
-	IndexFile     string       `mapstructure:"index_file"`
-	Cache         CacheConfig  `mapstructure:"cache"`
-	Index         IndexConfig  `mapstructure:"index"`
-	Upload        UploadConfig `mapstructure:"upload"`
+	AssetsDir           string       `mapstructure:"assets_dir"`
+	MetadataDir         string       `mapstructure:"metadata_dir"`
+	ThumbnailsDir       string       `mapstructure:"thumbnails_dir"`
+	IndexFile           string       `mapstructure:"index_file"`
+	AlbumCollectionFile string       `mapstructure:"albumCollection_file"`
+	TripCollectionFile  string       `mapstructure:"tripCollection_file"`
+	Cache               CacheConfig  `mapstructure:"cache"`
+	Index               IndexConfig  `mapstructure:"index"`
+	Upload              UploadConfig `mapstructure:"upload"`
 }
 
 func (c *StorageConfig) Validate() error {
@@ -87,6 +89,8 @@ func (c *StorageConfig) Validate() error {
 		{"metadata_dir", c.MetadataDir},
 		{"thumbnails_dir", c.ThumbnailsDir},
 		{"index_file", filepath.Dir(c.IndexFile)},
+		{"albumCollection_file", filepath.Dir(c.AlbumCollectionFile)},
+		{"tripCollection_file", filepath.Dir(c.TripCollectionFile)},
 		{"upload_temp_dir", c.Upload.TempDir},
 	}
 

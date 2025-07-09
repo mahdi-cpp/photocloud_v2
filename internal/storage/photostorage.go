@@ -15,6 +15,7 @@ import (
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -42,7 +43,9 @@ type PhotoStorage struct {
 	mu     sync.RWMutex // Protects all indexes and maps
 	cache  *LRUCache
 
-	metadata  *MetadataManager
+	metadata *MetadataManager
+	update   *UpdateManager
+	//albumManager *AlbumManager
 	thumbnail *ThumbnailManager
 
 	// Indexes
@@ -96,9 +99,11 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ps := &PhotoStorage{
-		config:            cfg,
-		cache:             NewLRUCache(cfg.CacheSize),
-		metadata:          NewMetadataManager(cfg.MetadataDir),
+		config:   cfg,
+		cache:    NewLRUCache(cfg.CacheSize),
+		metadata: NewMetadataManager(cfg.MetadataDir),
+		update:   NewUpdateManager(cfg.MetadataDir),
+		//albumManager:      NewAlbumManager(),
 		thumbnail:         NewThumbnailManager(cfg.ThumbnailsDir),
 		assetIndex:        make(map[int]string),
 		userIndex:         make(map[int][]int),
@@ -261,44 +266,178 @@ func (ps *PhotoStorage) GetAssetContent(id int) ([]byte, error) {
 }
 
 // UpdateAsset updates asset metadata
-func (ps *PhotoStorage) UpdateAsset(id int, update model.AssetUpdate) (*model.PHAsset, error) {
+func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (string, error) {
+
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 
-	// Load current asset
-	asset, err := ps.metadata.LoadMetadata(id)
-	if err != nil {
-		return nil, err
+	for _, id := range assetIds {
+
+		// Load current asset
+		asset, err := ps.metadata.LoadMetadata(id)
+		if err != nil {
+			return "", err
+		}
+
+		// Apply updates
+		if update.Filename != nil {
+			asset.Filename = *update.Filename
+		}
+		if update.CameraMake != nil {
+			asset.CameraMake = *update.CameraMake
+		}
+		if update.CameraModel != nil {
+			asset.CameraModel = *update.CameraModel
+		}
+
+		if update.IsFavorite != nil {
+			asset.IsFavorite = *update.IsFavorite
+		}
+		if update.IsScreenshot != nil {
+			asset.IsScreenshot = *update.IsScreenshot
+		}
+		if update.IsHidden != nil {
+			asset.IsHidden = *update.IsHidden
+		}
+
+		// Handle album operations
+		switch {
+		case update.Albums != nil:
+			// Full replacement
+			asset.Albums = *update.Albums
+		case len(update.AddAlbums) > 0 || len(update.RemoveAlbums) > 0:
+
+			// Create a set for efficient lookups
+			albumSet := make(map[int]bool)
+			for _, id := range asset.Albums {
+				albumSet[id] = true
+			}
+
+			// Add new albums (avoid duplicates)
+			for _, id := range update.AddAlbums {
+				if !albumSet[id] {
+					asset.Albums = append(asset.Albums, id)
+					albumSet[id] = true
+				}
+			}
+
+			// Remove specified albums
+			if len(update.RemoveAlbums) > 0 {
+				removeSet := make(map[int]bool)
+				for _, id := range update.RemoveAlbums {
+					removeSet[id] = true
+				}
+
+				newAlbums := make([]int, 0, len(asset.Albums))
+				for _, id := range asset.Albums {
+					if !removeSet[id] {
+						newAlbums = append(newAlbums, id)
+					}
+				}
+				asset.Albums = newAlbums
+			}
+		}
+
+		// Handle trip operations
+		switch {
+		case update.Trips != nil:
+			// Full replacement
+			asset.Trips = *update.Trips
+		case len(update.AddTrips) > 0 || len(update.RemoveTrips) > 0:
+
+			// Create a set for efficient lookups
+			tripSet := make(map[int]bool)
+			for _, id := range asset.Trips {
+				tripSet[id] = true
+			}
+
+			// Add new Trips (avoid duplicates)
+			for _, id := range update.AddTrips {
+				if !tripSet[id] {
+					asset.Trips = append(asset.Trips, id)
+					tripSet[id] = true
+				}
+			}
+
+			// Remove specified trips
+			if len(update.RemoveTrips) > 0 {
+				removeSet := make(map[int]bool)
+				for _, id := range update.RemoveTrips {
+					removeSet[id] = true
+				}
+
+				newTrips := make([]int, 0, len(asset.Trips))
+				for _, id := range asset.Trips {
+					if !removeSet[id] {
+						newTrips = append(newTrips, id)
+					}
+				}
+				asset.Trips = newTrips
+			}
+		}
+
+		// Handle person operations
+		switch {
+		case update.Persons != nil:
+			// Full replacement
+			asset.Persons = *update.Persons
+		case len(update.AddPersons) > 0 || len(update.RemovePersons) > 0:
+
+			// Create a set for efficient lookups
+			personSet := make(map[int]bool)
+			for _, id := range asset.Persons {
+				personSet[id] = true
+			}
+
+			// Add new Persons (avoid duplicates)
+			for _, id := range update.AddPersons {
+				if !personSet[id] {
+					asset.Persons = append(asset.Persons, id)
+					personSet[id] = true
+				}
+			}
+
+			// Remove specified Persons
+			if len(update.RemovePersons) > 0 {
+				removeSet := make(map[int]bool)
+				for _, id := range update.RemovePersons {
+					removeSet[id] = true
+				}
+
+				newPersons := make([]int, 0, len(asset.Persons))
+				for _, id := range asset.Persons {
+					if !removeSet[id] {
+						newPersons = append(newPersons, id)
+					}
+				}
+				asset.Persons = newPersons
+			}
+		}
+
+		asset.ModificationDate = time.Now()
+
+		// Save updated metadata
+		if err := ps.metadata.SaveMetadata(asset); err != nil {
+			return "", err
+		}
+
+		// Update indexes
+		ps.updateIndexesForAsset(asset)
+
+		// Update cache
+		ps.cache.Put(id, asset)
 	}
 
-	// Apply updates
-	if update.Filename != nil {
-		asset.Filename = *update.Filename
-	}
-	if update.IsFavorite != nil {
-		asset.IsFavorite = *update.IsFavorite
-	}
-	if update.IsScreenshot != nil {
-		asset.IsScreenshot = *update.IsScreenshot
-	}
-	if update.IsHidden != nil {
-		asset.IsHidden = *update.IsHidden
-	}
-	asset.ModificationDate = time.Now()
+	// Merging strings with the integer ID
+	merged := fmt.Sprintf(" %s, %d:", "update assets count: ", len(assetIds))
 
-	// Save updated metadata
-	if err := ps.metadata.SaveMetadata(asset); err != nil {
-		return nil, err
-	}
-
-	// Update indexes
-	ps.updateIndexesForAsset(asset)
-
-	// Update cache
-	ps.cache.Put(id, asset)
-
-	return asset, nil
+	return merged, nil
 }
+
+// Create updates asset metadata
+//func (ps *PhotoStorage) Create(ctx context.Context, createAlbum model.Album) (string, error) {
+//
+//}
 
 // DeleteAsset removes an asset and its metadata
 func (ps *PhotoStorage) DeleteAsset(id int) error {
@@ -454,6 +593,10 @@ func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*mod
 
 	startTime := time.Now()
 
+	err := ps.update.updateCameraMake(7, filters.CameraMake)
+	if err != nil {
+	}
+
 	// Step 1: Build criteria from filters
 	criteria := buildCriteria(filters)
 
@@ -467,6 +610,9 @@ func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*mod
 			totalCount++
 		}
 	}
+
+	// Apply sorting
+	sortAssets(matches, filters.SortBy, filters.SortOrder)
 
 	// Step 3: Apply pagination
 	start := filters.Offset
@@ -504,38 +650,6 @@ type IndexedItem[T any] struct {
 // searchCriteria defines a function type for service conditions
 type searchCriteria[T any] func(T) bool
 
-func Assets(assets []model.PHAsset, filters model.AssetSearchFilters) []IndexedItem[model.PHAsset] {
-
-	startTime := time.Now() // Capture start time
-
-	// Step 1: Build criteria from filters
-	criteria := buildCriteria(filters)
-
-	// Step 2: Find all matching assets
-	results := search(assets, criteria)
-
-	// Step 3: Apply pagination
-	start := filters.Offset
-	if start < 0 {
-		start = 0
-	}
-	if start > len(results) {
-		return []IndexedItem[model.PHAsset]{} // Offset beyond results
-	}
-
-	end := start + filters.Limit
-	if end > len(results) || filters.Limit <= 0 {
-		end = len(results) // Ignore limit if <=0 or too large
-	}
-
-	// Calculate and log execution duration
-	duration := time.Since(startTime)
-	log.Printf("Assets executed in %v. Scanned %d assets, returned %d results", duration, len(assets), len(results))
-	fmt.Println("")
-
-	return results[start:end]
-}
-
 // search performs a generic service on a slice and returns matched indices
 func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
 	var results []IndexedItem[T]
@@ -546,16 +660,6 @@ func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
 		}
 	}
 	return results
-}
-
-// Helper function to check if slice contains value
-func contains(slice []int, value int) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
 
 func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsset] {
@@ -628,10 +732,10 @@ func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsse
 		}
 
 		// Album filtering (if albums are specified)
-		//if len(filters.Albums) > 0 {
+		//if len(filters.AlbumCollection) > 0 {
 		//	found := false
-		//	for _, albumID := range filters.Albums {
-		//		if contains(asset.Albums, albumID) {
+		//	for _, albumID := range filters.AlbumCollection {
+		//		if contains(asset.AlbumCollection, albumID) {
 		//			found = true
 		//			break
 		//		}
@@ -684,6 +788,45 @@ func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsse
 
 		return true // Asset matches all active filters
 	}
+}
+
+func sortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
+	if sortBy == "" {
+		return // No sorting requested
+	}
+
+	sort.Slice(assets, func(i, j int) bool {
+		a := assets[i]
+		b := assets[j]
+
+		switch sortBy {
+		case "id":
+			if sortOrder == "asc" {
+				return a.ID < b.ID
+			}
+			return a.ID > b.ID
+		case "creationDate":
+			if sortOrder == "asc" {
+				return a.CreationDate.Before(b.CreationDate)
+			}
+			return a.CreationDate.After(b.CreationDate)
+
+		case "modificationDate":
+			if sortOrder == "asc" {
+				return a.ModificationDate.Before(b.ModificationDate)
+			}
+			return a.ModificationDate.After(b.ModificationDate)
+
+		case "filename":
+			if sortOrder == "asc" {
+				return a.Filename < b.Filename
+			}
+			return a.Filename > b.Filename
+
+		default:
+			return false // No sorting for unknown fields
+		}
+	})
 }
 
 //------------

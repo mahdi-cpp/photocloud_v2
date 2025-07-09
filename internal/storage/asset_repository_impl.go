@@ -44,16 +44,14 @@ func (r *AssetRepositoryImpl) GetAssetContent(ctx context.Context, assetID int) 
 	return r.storage.GetAssetContent(assetID)
 }
 
-func (r *AssetRepositoryImpl) UpdateAsset(ctx context.Context, assetID int, update *model.AssetUpdate) (*model.PHAsset, error) {
-
-	storageUpdate := model.AssetUpdate{
-		Filename:   update.Filename,
-		IsFavorite: update.IsFavorite,
-		IsHidden:   update.IsHidden,
-	}
-
-	return r.storage.UpdateAsset(assetID, storageUpdate)
+func (r *AssetRepositoryImpl) UpdateAsset(ctx context.Context, assetIds []int, update model.AssetUpdate) (string, error) {
+	return r.storage.UpdateAsset(assetIds, update)
 }
+
+//func (r *AssetRepositoryImpl) Create(ctx context.Context, createAlbum model.Album) (string, error) {
+//	r.storage.Create()
+//	return "", nil
+//}
 
 func (r *AssetRepositoryImpl) DeleteAsset(ctx context.Context, assetID int) error {
 	return r.storage.DeleteAsset(assetID)

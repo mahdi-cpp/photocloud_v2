@@ -2,14 +2,14 @@ package model
 
 import "time"
 
-type AlbumCollection struct {
-	Albums []Album `json:"albums,omitempty"`
+type TripCollection struct {
+	Trips []Trip `json:"trips,omitempty"`
 }
 
-type Album struct {
+type Trip struct {
 	ID               int       `json:"id"`
-	Name             string    `json:"url"`
-	AlbumType        string    `json:"albumType,omitempty"`
+	Name             string    `json:"name"`
+	TripType         string    `json:"tripType,omitempty"`
 	Count            int       `json:"count"`
 	IsCollection     bool      `json:"isCollection"`
 	IsHidden         bool      `json:"isHidden"`
@@ -17,13 +17,7 @@ type Album struct {
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
-//type Create struct {
-//	Name         *string `json:"name,omitempty"`
-//	IsCollection *bool   `json:"IsCollection,omitempty"`
-//	IsHidden     *bool   `json:"isHidden,omitempty"`
-//}
-
-type AlbumUpdate struct {
+type TripUpdate struct {
 	Name         *string `json:"name,omitempty"`
 	IsCollection *bool   `json:"IsCollection,omitempty"`
 	IsHidden     *bool   `json:"isHidden,omitempty"`

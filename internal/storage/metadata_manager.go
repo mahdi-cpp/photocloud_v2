@@ -9,12 +9,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 // MetadataManager handles asset metadata
 type MetadataManager struct {
-	dir string
+	dir   string
+	mutex sync.RWMutex
 }
 
 func NewMetadataManager(dir string) *MetadataManager {

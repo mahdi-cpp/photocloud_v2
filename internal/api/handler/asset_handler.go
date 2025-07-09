@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -49,6 +51,31 @@ func (h *AssetHandler) UploadAsset(c *gin.Context) {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 	//	return
 	//}
+
+	c.JSON(http.StatusCreated, asset)
+}
+
+func (h *AssetHandler) UpdateAssets(c *gin.Context) {
+
+	startTime := time.Now()
+
+	var update model.AssetUpdate
+	if err := c.ShouldBindJSON(&update); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	fmt.Println("UpdateAssets: ", update.AssetIds)
+
+	asset, err := h.assetRepo.UpdateAsset(c, update.AssetIds, update)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Log performance
+	duration := time.Since(startTime)
+	log.Printf("UpdateAssets: assets count: %d,  (in %v)", len(update.AssetIds), duration)
 
 	c.JSON(http.StatusCreated, asset)
 }

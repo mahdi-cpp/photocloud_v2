@@ -183,13 +183,13 @@ func (h *SearchHandler) AdvancedSearch(c *gin.Context) {
 func (h *SearchHandler) AdvancedSearchV2(c *gin.Context) {
 	//userID := c.GetInt("userID")
 
-	fmt.Println("AdvancedSearchV2")
-
 	var filters model.AssetSearchFilters
 	if err := c.ShouldBindJSON(&filters); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
+
+	fmt.Println("AdvancedSearchV2 userId: ", filters.UserID)
 
 	assets, total, err := h.assetRepo.SearchAssetsV2(c, filters)
 	if err != nil {
@@ -197,19 +197,8 @@ func (h *SearchHandler) AdvancedSearchV2(c *gin.Context) {
 		return
 	}
 
-	// Apply pagination
-	start := filters.Offset
-	if start > len(assets) {
-		start = len(assets)
-	}
-
-	end := start + filters.Limit
-	if end > len(assets) {
-		end = len(assets)
-	}
-
 	c.JSON(http.StatusOK, SearchResponse{
-		Results: assets[start:end],
+		Results: assets,
 		Total:   total,
 		Limit:   filters.Limit,
 		Offset:  filters.Offset,
