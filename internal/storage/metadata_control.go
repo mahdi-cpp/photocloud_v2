@@ -12,11 +12,9 @@ type MetadataControl[T any] struct {
 	mutex    sync.RWMutex // Protects concurrent access
 }
 
-// NewMetadataManagerV2 creates a new manager for the specified JSON file
+// NewMetadataManagerV2 creates a new metadata for the specified JSON file
 func NewMetadataManagerV2[T any](filePath string) *MetadataControl[T] {
-	return &MetadataControl[T]{
-		filePath: filePath,
-	}
+	return &MetadataControl[T]{filePath: filePath}
 }
 
 // Read retrieves the current data from the JSON file

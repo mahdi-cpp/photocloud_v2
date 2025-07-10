@@ -50,7 +50,7 @@ func main() {
 	//	photoStorage,
 	//)
 
-	albumManager := storage.NewAlbumManager(cfg.Storage.AlbumCollectionFile)
+	albumManager, _ := storage.NewAlbumManager(cfg.Storage.AlbumCollectionFile)
 	tripManager := storage.NewTripManager(cfg.Storage.TripCollectionFile)
 
 	// Create handlers
@@ -127,6 +127,7 @@ func initStorage(cfg *config.Config) (*storage.PhotoStorage, error) {
 
 	// Create storage configuration
 	storageCfg := storage.Config{
+		AppDir:        cfg.Storage.AppDir,
 		AssetsDir:     cfg.Storage.AssetsDir,
 		MetadataDir:   cfg.Storage.MetadataDir,
 		ThumbnailsDir: cfg.Storage.ThumbnailsDir,
@@ -214,6 +215,8 @@ func createRouter(
 
 		api.GET("/album/getList", albumHandler.GetList)
 		api.POST("/album/create", albumHandler.Create)
+		api.POST("/album/update", albumHandler.Update)
+		api.POST("/album/delete", albumHandler.Delete)
 
 		api.GET("/trip/getList", tripHandler.GetList)
 		api.POST("/trip/create", tripHandler.Create)
@@ -227,7 +230,7 @@ func createRouter(
 		api.GET("/search", searchHandler.SearchAssets)
 
 		api.POST("/search/advanced", searchHandler.AdvancedSearch)
-		api.POST("/search/advanced_v2", searchHandler.AdvancedSearchV2)
+		api.POST("/search/advanced_v2", searchHandler.AdvancedFilterV2)
 
 		//api.GET("/search/suggest", searchHandler.SuggestSearchTerms)
 

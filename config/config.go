@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -68,6 +67,7 @@ type CORSConfig struct {
 
 // StorageConfig defines storage settings
 type StorageConfig struct {
+	AppDir              string       `mapstructure:"app_dir"`
 	AssetsDir           string       `mapstructure:"assets_dir"`
 	MetadataDir         string       `mapstructure:"metadata_dir"`
 	ThumbnailsDir       string       `mapstructure:"thumbnails_dir"`
@@ -85,13 +85,15 @@ func (c *StorageConfig) Validate() error {
 		name string
 		path string
 	}{
-		{"assets_dir", c.AssetsDir},
-		{"metadata_dir", c.MetadataDir},
-		{"thumbnails_dir", c.ThumbnailsDir},
-		{"index_file", filepath.Dir(c.IndexFile)},
-		{"albumCollection_file", filepath.Dir(c.AlbumCollectionFile)},
-		{"tripCollection_file", filepath.Dir(c.TripCollectionFile)},
-		{"upload_temp_dir", c.Upload.TempDir},
+		{"app_dir", c.AppDir},
+
+		//{"assets_dir", c.AssetsDir},
+		//{"metadata_dir", c.MetadataDir},
+		//{"thumbnails_dir", c.ThumbnailsDir},
+		//{"index_file", filepath.Dir(c.IndexFile)},
+		//{"albumCollection_file", filepath.Dir(c.AlbumCollectionFile)},
+		//{"tripCollection_file", filepath.Dir(c.TripCollectionFile)},
+		//{"upload_temp_dir", c.Upload.TempDir},
 	}
 
 	for _, dir := range dirs {

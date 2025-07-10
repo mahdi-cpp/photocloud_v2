@@ -2,25 +2,57 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/registery"
+	"strconv"
 	"time"
 )
 
 type AlbumManager struct {
-	manager *MetadataControl[model.AlbumCollection]
+	albumRegistry *registery.Registry[model.Album]
+	metadata      *MetadataControl[model.AlbumCollection]
 }
 
-func NewAlbumManager(path string) *AlbumManager {
-	return &AlbumManager{
-		manager: NewMetadataManagerV2[model.AlbumCollection](path),
+func NewAlbumManager(path string) (*AlbumManager, error) {
+
+	manager := &AlbumManager{
+		albumRegistry: registery.NewRegistry[model.Album](),
+		metadata:      NewMetadataManagerV2[model.AlbumCollection](path),
 	}
+
+	albums, err := manager.load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+	}
+
+	for _, album := range albums {
+		manager.albumRegistry.Register(strconv.Itoa(album.ID), album)
+	}
+
+	return manager, nil
 }
 
-// CreateAlbum adds a new album with auto-generated ID
-func (am *AlbumManager) CreateAlbum(name string, albumType string, isCollection bool) (*model.Album, error) {
+func (manager *AlbumManager) load() ([]model.Album, error) {
+	albumCollection, err := manager.metadata.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []model.Album
+	for _, album := range albumCollection.Albums {
+		result = append(result, album)
+	}
+
+	return result, nil
+}
+
+// Create adds a new album with auto-generated ID
+func (manager *AlbumManager) Create(name string, albumType string, isCollection bool) (*model.Album, error) {
 	var newAlbum *model.Album
 
-	err := am.manager.Update(func(albums *model.AlbumCollection) error {
+	err := manager.metadata.Update(func(albums *model.AlbumCollection) error {
+
 		// Generate ID
 		maxID := 0
 		for _, album := range albums.Albums {
@@ -40,6 +72,8 @@ func (am *AlbumManager) CreateAlbum(name string, albumType string, isCollection 
 			ModificationDate: time.Now(),
 		}
 
+		manager.albumRegistry.Register(strconv.Itoa(newAlbum.ID), *newAlbum)
+
 		// Add to collection
 		albums.Albums = append(albums.Albums, *newAlbum)
 		return nil
@@ -48,20 +82,21 @@ func (am *AlbumManager) CreateAlbum(name string, albumType string, isCollection 
 	return newAlbum, err
 }
 
-// UpdateAlbum modifies an existing album
-func (am *AlbumManager) UpdateAlbum(id int, name string, albumType string, isHidden bool) (*model.Album, error) {
+// Update modifies an existing album
+func (manager *AlbumManager) Update(id int, name string) (*model.Album, error) {
 	var updatedAlbum *model.Album
 
-	err := am.manager.Update(func(albums *model.AlbumCollection) error {
+	err := manager.metadata.Update(func(albums *model.AlbumCollection) error {
 		for i, album := range albums.Albums {
 			if album.ID == id {
 				// Update fields
 				albums.Albums[i].Name = name
-				albums.Albums[i].AlbumType = albumType
-				albums.Albums[i].IsHidden = isHidden
+				//albums.Albums[i].AlbumType = albumType
+				//albums.Albums[i].IsHidden = isHidden
 				albums.Albums[i].ModificationDate = time.Now()
 
 				updatedAlbum = &albums.Albums[i]
+				manager.albumRegistry.Update(getKey(updatedAlbum.ID), *updatedAlbum)
 				return nil
 			}
 		}
@@ -71,13 +106,14 @@ func (am *AlbumManager) UpdateAlbum(id int, name string, albumType string, isHid
 	return updatedAlbum, err
 }
 
-// DeleteAlbum removes an album by ID
-func (am *AlbumManager) DeleteAlbum(id int) error {
-	return am.manager.Update(func(albums *model.AlbumCollection) error {
+// Delete removes an album by ID
+func (manager *AlbumManager) Delete(id int) error {
+	return manager.metadata.Update(func(albums *model.AlbumCollection) error {
 		for i, album := range albums.Albums {
 			if album.ID == id {
 				// Remove album from slice
 				albums.Albums = append(albums.Albums[:i], albums.Albums[i+1:]...)
+				manager.albumRegistry.Delete(getKey(album.ID))
 				return nil
 			}
 		}
@@ -85,40 +121,33 @@ func (am *AlbumManager) DeleteAlbum(id int) error {
 	})
 }
 
-// GetAlbum retrieves an album by ID
-func (am *AlbumManager) GetAlbum(id int) (*model.Album, error) {
-	albums, err := am.manager.Read()
+// Get retrieves an album by ID
+func (manager *AlbumManager) Get(id int) (*model.Album, error) {
+	album, err := manager.albumRegistry.Get(getKey(id))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("album not found")
 	}
-
-	for _, album := range albums.Albums {
-		if album.ID == id {
-			return &album, nil
-		}
-	}
-	return nil, errors.New("album not found")
+	return &album, nil
 }
 
 // List returns all albums with optional filters
-func (am *AlbumManager) List(includeHidden bool) ([]model.Album, error) {
-	albums, err := am.manager.Read()
-	if err != nil {
-		return nil, err
-	}
+func (manager *AlbumManager) List(includeHidden bool) ([]model.Album, error) {
 
+	albums := manager.albumRegistry.GetAllValues()
 	var result []model.Album
-	for _, album := range albums.Albums {
+	for _, album := range albums {
 		if !album.IsHidden || includeHidden {
 			result = append(result, album)
 		}
 	}
+
 	return result, nil
 }
 
-// GetAlbumsByType returns albums of a specific type
-func (am *AlbumManager) GetAlbumsByType(albumType string) ([]model.Album, error) {
-	albums, err := am.manager.Read()
+// GetByType returns albums of a specific type
+func (manager *AlbumManager) GetByType(albumType string) ([]model.Album, error) {
+
+	albums, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}
@@ -130,4 +159,8 @@ func (am *AlbumManager) GetAlbumsByType(albumType string) ([]model.Album, error)
 		}
 	}
 	return result, nil
+}
+
+func getKey(id int) string {
+	return strconv.Itoa(id)
 }

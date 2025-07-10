@@ -7,20 +7,20 @@ import (
 )
 
 type TripManager struct {
-	manager *MetadataControl[model.TripCollection]
+	metadata *MetadataControl[model.TripCollection]
 }
 
 func NewTripManager(path string) *TripManager {
 	return &TripManager{
-		manager: NewMetadataManagerV2[model.TripCollection](path),
+		metadata: NewMetadataManagerV2[model.TripCollection](path),
 	}
 }
 
 // CreateTrip adds a new trip with auto-generated ID
-func (am *TripManager) CreateTrip(name string, tripType string, isCollection bool) (*model.Trip, error) {
+func (manager *TripManager) CreateTrip(name string, tripType string, isCollection bool) (*model.Trip, error) {
 	var newTrip *model.Trip
 
-	err := am.manager.Update(func(trips *model.TripCollection) error {
+	err := manager.metadata.Update(func(trips *model.TripCollection) error {
 		// Generate ID
 		maxID := 0
 		for _, trip := range trips.Trips {
@@ -49,10 +49,10 @@ func (am *TripManager) CreateTrip(name string, tripType string, isCollection boo
 }
 
 // Update modifies an existing trip
-func (am *TripManager) Update(id int, name string, tripType string, isHidden bool) (*model.Trip, error) {
+func (manager *TripManager) Update(id int, name string, tripType string, isHidden bool) (*model.Trip, error) {
 	var updated *model.Trip
 
-	err := am.manager.Update(func(trips *model.TripCollection) error {
+	err := manager.metadata.Update(func(trips *model.TripCollection) error {
 		for i, trip := range trips.Trips {
 			if trip.ID == id {
 				// Update fields
@@ -72,8 +72,8 @@ func (am *TripManager) Update(id int, name string, tripType string, isHidden boo
 }
 
 // Delete removes trip by ID
-func (am *TripManager) Delete(id int) error {
-	return am.manager.Update(func(trips *model.TripCollection) error {
+func (manager *TripManager) Delete(id int) error {
+	return manager.metadata.Update(func(trips *model.TripCollection) error {
 		for i, trip := range trips.Trips {
 			if trip.ID == id {
 				// Remove trip from slice
@@ -86,8 +86,9 @@ func (am *TripManager) Delete(id int) error {
 }
 
 // Get retrieves trip by ID
-func (am *TripManager) Get(id int) (*model.Trip, error) {
-	trips, err := am.manager.Read()
+func (manager *TripManager) Get(id int) (*model.Trip, error) {
+
+	trips, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}
@@ -101,8 +102,8 @@ func (am *TripManager) Get(id int) (*model.Trip, error) {
 }
 
 // GetList returns all trips with optional filters
-func (am *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
-	trips, err := am.manager.Read()
+func (manager *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
+	trips, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +118,8 @@ func (am *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
 }
 
 // GetByType returns trips of a specific type
-func (am *TripManager) GetByType(tripType string) ([]model.Trip, error) {
-	trips, err := am.manager.Read()
+func (manager *TripManager) GetByType(tripType string) ([]model.Trip, error) {
+	trips, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}

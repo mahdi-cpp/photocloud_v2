@@ -8,7 +8,7 @@ type AlbumCollection struct {
 
 type Album struct {
 	ID               int       `json:"id"`
-	Name             string    `json:"url"`
+	Name             string    `json:"name"`
 	AlbumType        string    `json:"albumType,omitempty"`
 	Count            int       `json:"count"`
 	IsCollection     bool      `json:"isCollection"`
@@ -16,12 +16,6 @@ type Album struct {
 	CreationDate     time.Time `json:"creationDate"`
 	ModificationDate time.Time `json:"modificationDate"`
 }
-
-//type Create struct {
-//	Name         *string `json:"name,omitempty"`
-//	IsCollection *bool   `json:"IsCollection,omitempty"`
-//	IsHidden     *bool   `json:"isHidden,omitempty"`
-//}
 
 type AlbumUpdate struct {
 	Name         *string `json:"name,omitempty"`

@@ -11,18 +11,18 @@ import (
 	"strings"
 )
 
-// MetadataExtractor extracts metadata from media files
-type MetadataExtractor struct {
+// ImageExtractor extracts metadata from media files
+type ImageExtractor struct {
 	exifToolPath string
 }
 
 // NewMetadataExtractor creates a new metadata extractor
-func NewMetadataExtractor(exifToolPath string) *MetadataExtractor {
-	return &MetadataExtractor{exifToolPath: exifToolPath}
+func NewMetadataExtractor(exifToolPath string) *ImageExtractor {
+	return &ImageExtractor{exifToolPath: exifToolPath}
 }
 
 // ExtractMetadata extracts metadata from a file
-func (e *MetadataExtractor) ExtractMetadata(filePath string) (width, height int, camera string, err error) {
+func (e *ImageExtractor) ExtractMetadata(filePath string) (width, height int, camera string, err error) {
 	// First try with exifTool if available
 	if e.exifToolPath != "" {
 		if width, height, camera, err = e.extractWithExifTool(filePath); err == nil {
@@ -35,7 +35,7 @@ func (e *MetadataExtractor) ExtractMetadata(filePath string) (width, height int,
 }
 
 // extractWithExifTool uses exiftool for metadata extraction
-func (e *MetadataExtractor) extractWithExifTool(filePath string) (int, int, string, error) {
+func (e *ImageExtractor) extractWithExifTool(filePath string) (int, int, string, error) {
 	cmd := exec.Command(e.exifToolPath,
 		"-ImageWidth",
 		"-ImageHeight",
@@ -63,7 +63,7 @@ func (e *MetadataExtractor) extractWithExifTool(filePath string) (int, int, stri
 }
 
 // extractBasicMetadata uses standard image decoding
-func (e *MetadataExtractor) extractBasicMetadata(filePath string) (int, int, string, error) {
+func (e *ImageExtractor) extractBasicMetadata(filePath string) (int, int, string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("failed to open file: %w", err)

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage/indexer"
+	"github.com/mahdi-cpp/photocloud_v2/registery"
+	"github.com/mahdi-cpp/photocloud_v2/user"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -36,6 +38,13 @@ const (
 )
 
 var assets []model.PHAsset
+var users []User
+
+type User struct {
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	Directory string `json:"directory"`
+}
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
@@ -43,10 +52,13 @@ type PhotoStorage struct {
 	mu     sync.RWMutex // Protects all indexes and maps
 	cache  *LRUCache
 
-	metadata *MetadataManager
-	update   *UpdateManager
-	//albumManager *AlbumManager
+	metadata  *MetadataManager
+	update    *UpdateManager
 	thumbnail *ThumbnailManager
+
+	userService *user.UserService
+
+	albumRegistry *registery.Registry[model.Album]
 
 	// Indexes
 	assetIndex      map[int]string   // assetID -> filename
@@ -75,6 +87,7 @@ type PhotoStorage struct {
 
 // Config defines storage system configuration
 type Config struct {
+	AppDir        string
 	AssetsDir     string
 	MetadataDir   string
 	ThumbnailsDir string
@@ -99,11 +112,14 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ps := &PhotoStorage{
-		config:   cfg,
-		cache:    NewLRUCache(cfg.CacheSize),
-		metadata: NewMetadataManager(cfg.MetadataDir),
-		update:   NewUpdateManager(cfg.MetadataDir),
-		//albumManager:      NewAlbumManager(),
+		config: cfg,
+		cache:  NewLRUCache(cfg.CacheSize),
+
+		userService:   user.NewUserService(cfg.AppDir),
+		metadata:      NewMetadataManager(cfg.MetadataDir),
+		update:        NewUpdateManager(cfg.MetadataDir),
+		albumRegistry: registery.NewRegistry[model.Album](),
+
 		thumbnail:         NewThumbnailManager(cfg.ThumbnailsDir),
 		assetIndex:        make(map[int]string),
 		userIndex:         make(map[int][]int),
@@ -193,7 +209,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 		return nil, fmt.Errorf("failed to save asset: %w", err)
 	}
 
-	// Initialize the MetadataExtractor with the path to exiftool
+	// Initialize the ImageExtractor with the path to exiftool
 	extractor := NewMetadataExtractor("/usr/local/bin/exiftool")
 
 	// Extract metadata
