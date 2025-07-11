@@ -633,7 +633,7 @@ func (ps *PhotoStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model
 
 	// Log performance
 	duration := time.Since(startTime)
-	log.Printf("SearchAssets: scanned %d assets, found %d matches, returned %d (in %v)", len(mahdiAssets), totalCount, len(paginated), duration)
+	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(mahdiAssets), totalCount, len(paginated), duration)
 
 	return paginated, totalCount, nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/registery"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -19,23 +18,20 @@ import (
 )
 
 type UserStorage struct {
-	config Config
-	mu     sync.RWMutex // Protects all indexes and maps
-
-	user          model.User
-	assets        []model.PHAsset
-	albumRegistry *registery.Registry[model.Album]
-	metadata      *MetadataManager
-	thumbnail     *ThumbnailManager
-
+	config            Config
+	mu                sync.RWMutex // Protects all indexes and maps
+	user              model.User
+	assets            []model.PHAsset
+	albumManager      *AlbumManager
+	tripManager       *TripManager
+	metadata          *MetadataManager
+	thumbnail         *ThumbnailManager
 	lastID            int
 	lastRebuild       time.Time
 	maintenanceCtx    context.Context
 	cancelMaintenance context.CancelFunc
-
-	// Stats
-	statsMu sync.Mutex
-	stats   Stats
+	statsMu           sync.Mutex
+	stats             Stats
 }
 
 func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
@@ -300,16 +296,16 @@ func (us *UserStorage) DeleteAsset(id int) error {
 	defer us.mu.Unlock()
 
 	// Get asset
-	asset, err := us.GetAsset(id)
-	if err != nil {
-		return err
-	}
+	//asset, err := us.GetAsset(id)
+	//if err != nil {
+	//	return err
+	//}
 
 	// Delete asset file
-	assetPath := filepath.Join(us.config.AssetsDir, asset.Filename)
-	if err := os.Remove(assetPath); err != nil {
-		return fmt.Errorf("failed to delete asset file: %w", err)
-	}
+	//assetPath := filepath.Join(us.config.AssetsDir, asset.Filename)
+	//if err := os.Remove(assetPath); err != nil {
+	//	return fmt.Errorf("failed to delete asset file: %w", err)
+	//}
 
 	// Delete metadata
 	if err := us.metadata.DeleteMetadata(id); err != nil {
@@ -317,7 +313,7 @@ func (us *UserStorage) DeleteAsset(id int) error {
 	}
 
 	// Delete thumbnail (if exists)
-	us.thumbnail.DeleteThumbnails(id)
+	//us.thumbnail.DeleteThumbnails(id)
 
 	// Remove from indexes
 	//us.removeFromIndexes(id)
@@ -346,21 +342,21 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 	startTime := time.Now()
 
 	// Step 1: Build criteria from filters
-	criteria := buildCriteria(filters)
+	criteria := assetBuildCriteria(filters)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
 	var matches []*model.PHAsset
 	totalCount := 0
 
-	for i := range mahdiAssets {
-		if criteria(mahdiAssets[i]) {
-			matches = append(matches, &mahdiAssets[i])
+	for i := range us.assets {
+		if criteria(us.assets[i]) {
+			matches = append(matches, &us.assets[i])
 			totalCount++
 		}
 	}
 
 	// Apply sorting
-	sortAssets(matches, filters.SortBy, filters.SortOrder)
+	assetSortAssets(matches, filters.SortBy, filters.SortOrder)
 
 	// Step 3: Apply pagination
 	start := filters.Offset
@@ -380,19 +376,28 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 
 	// Log performance
 	duration := time.Since(startTime)
-	log.Printf("SearchAssets: scanned %d assets, found %d matches, returned %d (in %v)", len(mahdiAssets), totalCount, len(paginated), duration)
+	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
 
 	return paginated, totalCount, nil
 }
 
+// ========================
+// Internal Implementation
+// ========================
+
+type IndexedItemV2[T any] struct {
+	Index int
+	Value T
+}
+
 type assetSearchCriteria[T any] func(T) bool
 
-func assetSearch[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
-	var results []IndexedItem[T]
+func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedItemV2[T] {
+	var results []IndexedItemV2[T]
 
 	for i, item := range slice {
 		if criteria(item) {
-			results = append(results, IndexedItem[T]{Index: i, Value: item})
+			results = append(results, IndexedItemV2[T]{Index: i, Value: item})
 		}
 	}
 	return results
@@ -403,9 +408,9 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 	return func(asset model.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
-		if filters.UserID != 0 && asset.UserID != filters.UserID {
-			return false
-		}
+		//if filters.UserID != 0 && asset.UserID != filters.UserID {
+		//	return false
+		//}
 
 		// Filter by Query (case-insensitive service in Filename/URL)
 		if filters.Query != "" {
@@ -454,7 +459,6 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 		if filters.PixelWidth != 0 && asset.PixelWidth != filters.PixelWidth {
 			return false
 		}
-
 		if filters.PixelHeight != 0 && asset.PixelHeight != filters.PixelHeight {
 			return false
 		}
@@ -513,6 +517,7 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 }
 
 func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
+
 	if sortBy == "" {
 		return // No sorting requested
 	}

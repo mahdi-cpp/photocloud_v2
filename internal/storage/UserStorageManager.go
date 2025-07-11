@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/registery"
 	"log"
 	"mime/multipart"
 	"os"
@@ -82,10 +81,12 @@ func (m *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Use
 		user:              user,
 		metadata:          NewMetadataManager(userMetadataDir),
 		thumbnail:         NewThumbnailManager(userThumbnailsDir),
-		albumRegistry:     registery.NewRegistry[model.Album](),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 	}
+
+	storage.albumManager, _ = NewAlbumManager("")
+	storage.tripManager, _ = NewTripManager("")
 
 	// Load user assets
 	var err error
@@ -110,6 +111,24 @@ func (m *UserStorageManager) RemoveStorageForUser(userID int) {
 		// Remove from map
 		delete(m.storages, userID)
 	}
+}
+
+func (m *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) *AlbumManager {
+	userStorage, err := m.GetStorageForUser(c, userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return userStorage.albumManager
+}
+
+func (m *UserStorageManager) GetTripManager(c *gin.Context, userID int) *TripManager {
+	userStorage, err := m.GetStorageForUser(c, userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return userStorage.tripManager
 }
 
 func (m *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
@@ -148,4 +167,13 @@ func (m *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (
 	}
 
 	return userStorage.GetAsset(assetId)
+}
+
+func (m *UserStorageManager) Delete(c *gin.Context, userId int, assetId int) error {
+	userStorage, err := m.GetStorageForUser(c, userId)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return userStorage.DeleteAsset(assetId)
 }

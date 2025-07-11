@@ -163,7 +163,7 @@ func (r *AssetRepositoryImpl) DeleteOrphanedAssets(ctx context.Context) (int, er
 //	successCount := 0
 //	for _, id := range assetIDs {
 //		// Get asset
-//		asset, err := r.storage.GetAsset(id)
+//		asset, err := r.storage.Get(id)
 //		if err != nil {
 //			continue
 //		}

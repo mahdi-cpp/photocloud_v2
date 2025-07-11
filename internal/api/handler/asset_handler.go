@@ -20,7 +20,7 @@ func NewAssetHandler(userStorageManager *storage.UserStorageManager) *AssetHandl
 	return &AssetHandler{userStorageManager: userStorageManager}
 }
 
-func (h *AssetHandler) UploadAsset(c *gin.Context) {
+func (h *AssetHandler) Upload(c *gin.Context) {
 
 	userID := c.GetInt("userID")
 	file, header, err := c.Request.FormFile("file")
@@ -42,7 +42,7 @@ func (h *AssetHandler) UploadAsset(c *gin.Context) {
 		return
 	}
 
-	//asset, err := h.userStorageManager.UploadAsset(c, userID, file, header)
+	//asset, err := h.userStorageManager.Upload(c, userID, file, header)
 	//if err != nil {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 	//	return
@@ -51,7 +51,7 @@ func (h *AssetHandler) UploadAsset(c *gin.Context) {
 	c.JSON(http.StatusCreated, asset)
 }
 
-func (h *AssetHandler) UpdateAssets(c *gin.Context) {
+func (h *AssetHandler) Update(c *gin.Context) {
 
 	startTime := time.Now()
 
@@ -61,7 +61,7 @@ func (h *AssetHandler) UpdateAssets(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("UpdateAssets: ", update.AssetIds)
+	fmt.Println("Update: ", update.AssetIds)
 
 	asset, err := h.userStorageManager.UpdateAsset(c, update.AssetIds, update)
 	if err != nil {
@@ -71,12 +71,12 @@ func (h *AssetHandler) UpdateAssets(c *gin.Context) {
 
 	// Log performance
 	duration := time.Since(startTime)
-	log.Printf("UpdateAssets: assets count: %d,  (in %v)", len(update.AssetIds), duration)
+	log.Printf("Update: assets count: %d,  (in %v)", len(update.AssetIds), duration)
 
 	c.JSON(http.StatusCreated, asset)
 }
 
-func (h *AssetHandler) GetAsset(c *gin.Context) {
+func (h *AssetHandler) Get(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -93,7 +93,7 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 	c.JSON(http.StatusOK, asset)
 }
 
-func (h *AssetHandler) SearchAssets(c *gin.Context) {
+func (h *AssetHandler) Search(c *gin.Context) {
 
 	userID := c.GetInt("userID")
 	query := c.Query("query")
@@ -124,14 +124,31 @@ func (h *AssetHandler) SearchAssets(c *gin.Context) {
 		filters.EndDate = &dateRange[1]
 	}
 
-	//assets, _, err := s.repo.SearchAssets(ctx, filters)
+	//assets, _, err := s.repo.Search(ctx, filters)
 	//return assets, err
 
-	//assets, _, err := h.userStorageManager.SearchAssets(c, filters)
+	//assets, _, err := h.userStorageManager.Search(c, filters)
 	//if err != nil {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 	//	return
 	//}
 
 	//c.JSON(http.StatusOK, assets)
+}
+
+func (h *AssetHandler) Delete(c *gin.Context) {
+
+	var request model.AssetDelete
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	err := h.userStorageManager.Delete(c, request.UserID, request.AssetID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, "successful delete asset with id: "+strconv.Itoa(request.AssetID))
 }

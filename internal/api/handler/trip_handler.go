@@ -4,25 +4,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"log"
 	"net/http"
 )
 
 type TripHandler struct {
-	manager *storage.TripManager
+	userStorageManager *storage.UserStorageManager
 }
 
-func NewTripHandler(manager *storage.TripManager) *TripHandler {
-	return &TripHandler{manager: manager}
+func NewTripHandler(userStorageManager *storage.UserStorageManager) *TripHandler {
+	return &TripHandler{userStorageManager: userStorageManager}
 }
 
 func (handler *TripHandler) GetList(c *gin.Context) {
-	list, err := handler.manager.GetList(true)
+
+	tripManager := handler.userStorageManager.GetAlbumManager(c, 4)
+	data, err := tripManager.GetList(true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
-	c.JSON(http.StatusCreated, list)
+
+	c.JSON(http.StatusCreated, data)
 }
 
 func (handler *TripHandler) Create(c *gin.Context) {
@@ -33,11 +35,12 @@ func (handler *TripHandler) Create(c *gin.Context) {
 		return
 	}
 
-	createTrip, err := handler.manager.CreateTrip("رامسر 1403", "تور پاییزی", true)
+	tripManager := handler.userStorageManager.GetTripManager(c, 4)
+	data, err := tripManager.Create(trip.Name)
 	if err != nil {
-		log.Fatal("Failed CreateTrip: ", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	c.JSON(http.StatusCreated, createTrip)
+	c.JSON(http.StatusCreated, data)
 }

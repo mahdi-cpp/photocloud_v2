@@ -23,12 +23,6 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Initialize storage system
-	//photoStorage, err := initStorage(cfg)
-	//if err != nil {
-	//	log.Fatalf("Failed to initialize storage: %v", err)
-	//}
-
 	storageCfg := storage.Config{
 		AppDir:        cfg.Storage.AppDir,
 		AssetsDir:     cfg.Storage.AssetsDir,
@@ -43,16 +37,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	albumManager, _ := storage.NewAlbumManager(cfg.Storage.AlbumCollectionFile)
-	tripManager := storage.NewTripManager(cfg.Storage.TripCollectionFile)
-
 	// Create handlers
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
 	//systemHandler := handler.NewSystemHandler(userStorageManager)
 
-	albumHandler := handler.NewAlbumHandler(albumManager)
-	tripHandler := handler.NewTripHandler(tripManager)
+	albumHandler := handler.NewAlbumHandler(userStorageManager)
+	tripHandler := handler.NewTripHandler(userStorageManager)
 
 	// Create Gin router
 	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, searchHandler)
@@ -119,12 +110,13 @@ func createRouter(
 	{
 		// Search routes
 		api.GET("/search", searchHandler.Search)
-		api.POST("/search/filters", searchHandler.AssetFilters)
+		api.POST("/search/filters", searchHandler.Filters)
 
 		// Asset routes
-		api.POST("/assets", assetHandler.UploadAsset)
-		api.GET("/assets/:id", assetHandler.GetAsset)
-		api.POST("/assets/update", assetHandler.UpdateAssets)
+		api.POST("/assets", assetHandler.Upload)
+		api.GET("/assets/:id", assetHandler.Get)
+		api.POST("/assets/update", assetHandler.Update)
+		api.POST("/assets/delete", assetHandler.Delete)
 
 		api.GET("/album/getList", albumHandler.GetList)
 		api.POST("/album/create", albumHandler.Create)
@@ -134,7 +126,7 @@ func createRouter(
 		api.GET("/trip/getList", tripHandler.GetList)
 		api.POST("/trip/create", tripHandler.Create)
 
-		//api.PUT("/assets/:id", assetHandler.UpdateAssets)
+		//api.PUT("/assets/:id", assetHandler.Update)
 		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)
 		//api.GET("/assets/:id/content", assetHandler.GetAssetContent)
 		//api.GET("/assets/:id/thumbnail", assetHandler.GetAssetThumbnail)

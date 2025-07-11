@@ -103,3 +103,8 @@ type AssetUpdate struct {
 	AddPersons    []int  `json:"AddPersons,omitempty"`    // Persons to add
 	RemovePersons []int  `json:"RemovePersons,omitempty"` // Persons to remove
 }
+
+type AssetDelete struct {
+	UserID  int `json:"userID"`
+	AssetID int `json:"assetID"`
+}

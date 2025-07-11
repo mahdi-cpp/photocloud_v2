@@ -2,22 +2,42 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/registery"
+	"strconv"
 	"time"
 )
 
 type TripManager struct {
+	registry *registery.Registry[model.Trip]
 	metadata *MetadataControl[model.TripCollection]
 }
 
-func NewTripManager(path string) *TripManager {
-	return &TripManager{
+func NewTripManager(path string) (*TripManager, error) {
+	//return &TripManager{
+	//	metadata: NewMetadataManagerV2[model.TripCollection](path),
+	//}
+
+	manager := &TripManager{
+		registry: registery.NewRegistry[model.Trip](),
 		metadata: NewMetadataManagerV2[model.TripCollection](path),
 	}
+
+	albums, err := manager.load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+	}
+
+	for _, album := range albums {
+		manager.registry.Register(strconv.Itoa(album.ID), album)
+	}
+
+	return manager, nil
+
 }
 
-// CreateTrip adds a new trip with auto-generated ID
-func (manager *TripManager) CreateTrip(name string, tripType string, isCollection bool) (*model.Trip, error) {
+func (manager *TripManager) Create(name string) (*model.Trip, error) {
 	var newTrip *model.Trip
 
 	err := manager.metadata.Update(func(trips *model.TripCollection) error {
@@ -31,10 +51,10 @@ func (manager *TripManager) CreateTrip(name string, tripType string, isCollectio
 
 		// Create new trip
 		newTrip = &model.Trip{
-			ID:               maxID + 1,
-			Name:             name,
-			TripType:         tripType,
-			IsCollection:     isCollection,
+			ID:   maxID + 1,
+			Name: name,
+			//TripType:         tripType,
+			//IsCollection:     isCollection,
 			IsHidden:         false,
 			CreationDate:     time.Now(),
 			ModificationDate: time.Now(),
@@ -48,7 +68,6 @@ func (manager *TripManager) CreateTrip(name string, tripType string, isCollectio
 	return newTrip, err
 }
 
-// Update modifies an existing trip
 func (manager *TripManager) Update(id int, name string, tripType string, isHidden bool) (*model.Trip, error) {
 	var updated *model.Trip
 
@@ -71,7 +90,6 @@ func (manager *TripManager) Update(id int, name string, tripType string, isHidde
 	return updated, err
 }
 
-// Delete removes trip by ID
 func (manager *TripManager) Delete(id int) error {
 	return manager.metadata.Update(func(trips *model.TripCollection) error {
 		for i, trip := range trips.Trips {
@@ -85,7 +103,6 @@ func (manager *TripManager) Delete(id int) error {
 	})
 }
 
-// Get retrieves trip by ID
 func (manager *TripManager) Get(id int) (*model.Trip, error) {
 
 	trips, err := manager.metadata.Read()
@@ -101,7 +118,6 @@ func (manager *TripManager) Get(id int) (*model.Trip, error) {
 	return nil, errors.New("trip not found")
 }
 
-// GetList returns all trips with optional filters
 func (manager *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
 	trips, err := manager.metadata.Read()
 	if err != nil {
@@ -117,7 +133,6 @@ func (manager *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
 	return result, nil
 }
 
-// GetByType returns trips of a specific type
 func (manager *TripManager) GetByType(tripType string) ([]model.Trip, error) {
 	trips, err := manager.metadata.Read()
 	if err != nil {
@@ -130,5 +145,19 @@ func (manager *TripManager) GetByType(tripType string) ([]model.Trip, error) {
 			result = append(result, trip)
 		}
 	}
+	return result, nil
+}
+
+func (manager *TripManager) load() ([]model.Trip, error) {
+	collection, err := manager.metadata.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []model.Trip
+	for _, trip := range collection.Trips {
+		result = append(result, trip)
+	}
+
 	return result, nil
 }

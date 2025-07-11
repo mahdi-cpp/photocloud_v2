@@ -31,6 +31,7 @@ func NewUserManager(dir string) *UserManager {
 
 	return manager
 }
+
 func (manager *UserManager) GetById(id int) model.User {
 	return manager.users[id]
 }
@@ -39,7 +40,6 @@ func (manager *UserManager) GetUsername(id int) string {
 	return manager.users[id].Username
 }
 
-// ----------------------------------------
 func (manager *UserManager) load() ([]model.User, error) {
 
 	userCollection, err := manager.metadata.Read()

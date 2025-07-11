@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"net/http"
@@ -18,7 +17,7 @@ func NewSearchHandler(userStorageManager *storage.UserStorageManager) *SearchHan
 	return &SearchHandler{userStorageManager: userStorageManager}
 }
 
-func (h *SearchHandler) AssetFilters(c *gin.Context) {
+func (h *SearchHandler) Filters(c *gin.Context) {
 
 	var filters model.AssetSearchFilters
 	if err := c.ShouldBindJSON(&filters); err != nil {
@@ -26,7 +25,7 @@ func (h *SearchHandler) AssetFilters(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("AssetFilters userId: ", filters.UserID)
+	//fmt.Println("Filters userId: ", filters.UserID)
 
 	assets, total, err := h.userStorageManager.FilterAssets(c, filters)
 	if err != nil {
@@ -34,7 +33,7 @@ func (h *SearchHandler) AssetFilters(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, SearchResponse{
+	c.JSON(http.StatusOK, FilterResponse{
 		Results: assets,
 		Total:   total,
 		Limit:   filters.Limit,
@@ -42,16 +41,14 @@ func (h *SearchHandler) AssetFilters(c *gin.Context) {
 	})
 }
 
-// SearchResponse contains search results with pagination info
-type SearchResponse struct {
+type FilterResponse struct {
 	Results []*model.PHAsset `json:"results"`
 	Total   int              `json:"total"`
 	Limit   int              `json:"limit"`
 	Offset  int              `json:"offset"`
 }
 
-// AdvancedSearchRequest defines complex search parameters
-type AdvancedSearchRequest struct {
+type AdvancedFilterRequest struct {
 	Query       string     `json:"query"`
 	MediaType   string     `json:"mediaType"`
 	CameraModel string     `json:"cameraModel"`
