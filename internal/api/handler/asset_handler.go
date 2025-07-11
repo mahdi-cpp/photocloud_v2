@@ -13,20 +13,15 @@ import (
 )
 
 type AssetHandler struct {
-	assetRepo *storage.AssetRepositoryImpl
+	userStorageManager *storage.UserStorageManager
 }
 
-func NewAssetHandler(assetRepo *storage.AssetRepositoryImpl) *AssetHandler {
-	return &AssetHandler{assetRepo: assetRepo}
+func NewAssetHandler(userStorageManager *storage.UserStorageManager) *AssetHandler {
+	return &AssetHandler{userStorageManager: userStorageManager}
 }
 
-// UploadAsset godoc
-// @Summary Upload a new asset
-// @Accept  multipart/form-data
-// @Param   file formData file true "Asset file"
-// @Success 201 {object} model.PHAsset
-// @Router /assets [post]
 func (h *AssetHandler) UploadAsset(c *gin.Context) {
+
 	userID := c.GetInt("userID")
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
@@ -41,12 +36,13 @@ func (h *AssetHandler) UploadAsset(c *gin.Context) {
 		Filename: header.Filename,
 	}
 
-	asset, err = h.assetRepo.CreateAsset(c, asset, file, header)
+	asset, err = h.userStorageManager.UploadAsset(c, asset.UserID, file, header)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 		return
 	}
-	//asset, err := h.assetRepo.UploadAsset(c, userID, file, header)
+
+	//asset, err := h.userStorageManager.UploadAsset(c, userID, file, header)
 	//if err != nil {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 	//	return
@@ -67,7 +63,7 @@ func (h *AssetHandler) UpdateAssets(c *gin.Context) {
 
 	fmt.Println("UpdateAssets: ", update.AssetIds)
 
-	asset, err := h.assetRepo.UpdateAsset(c, update.AssetIds, update)
+	asset, err := h.userStorageManager.UpdateAsset(c, update.AssetIds, update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -80,19 +76,15 @@ func (h *AssetHandler) UpdateAssets(c *gin.Context) {
 	c.JSON(http.StatusCreated, asset)
 }
 
-// GetAsset godoc
-// @Summary Get asset metadata
-// @Param   id path int true "Asset ID"
-// @Success 200 {object} model.PHAsset
-// @Router /assets/{id} [get]
 func (h *AssetHandler) GetAsset(c *gin.Context) {
+
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	asset, err := h.assetRepo.GetAsset(c, id)
+	asset, err := h.userStorageManager.GetAsset(c, 1, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
 		return
@@ -101,14 +93,6 @@ func (h *AssetHandler) GetAsset(c *gin.Context) {
 	c.JSON(http.StatusOK, asset)
 }
 
-// SearchAssets godoc
-// @Summary Search assets
-// @Param   query query string false "Search query"
-// @Param   type query string false "Media type" Enums(image,video)
-// @Param   start query string false "Start date (YYYY-MM-DD)"
-// @Param   end query string false "End date (YYYY-MM-DD)"
-// @Success 200 {array} model.PHAsset
-// @Router /search [get]
 func (h *AssetHandler) SearchAssets(c *gin.Context) {
 
 	userID := c.GetInt("userID")
@@ -143,11 +127,11 @@ func (h *AssetHandler) SearchAssets(c *gin.Context) {
 	//assets, _, err := s.repo.SearchAssets(ctx, filters)
 	//return assets, err
 
-	assets, _, err := h.assetRepo.SearchAssets(c, filters)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
-		return
-	}
+	//assets, _, err := h.userStorageManager.SearchAssets(c, filters)
+	//if err != nil {
+	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+	//	return
+	//}
 
-	c.JSON(http.StatusOK, assets)
+	//c.JSON(http.StatusOK, assets)
 }

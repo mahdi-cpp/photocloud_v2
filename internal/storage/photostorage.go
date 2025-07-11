@@ -3,12 +3,10 @@ package storage
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage/indexer"
 	"github.com/mahdi-cpp/photocloud_v2/registery"
-	"github.com/mahdi-cpp/photocloud_v2/user"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -24,27 +22,11 @@ import (
 	"time"
 )
 
-var (
-	ErrAssetNotFound     = errors.New("asset not found")
-	ErrThumbnailNotFound = errors.New("thumbnail not found")
-	ErrFileTooLarge      = errors.New("file size exceeds limit")
-	ErrInvalidUpdate     = errors.New("invalid asset update")
-	ErrMetadataCorrupted = errors.New("metadata corrupted")
-	ErrIndexCorrupted    = errors.New("index corrupted")
-)
-
 const (
 	earthRadius = 6371 // Earth's radius in km
 )
 
-var assets []model.PHAsset
-var users []User
-
-type User struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Directory string `json:"directory"`
-}
+var mahdiAssets []model.PHAsset
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
@@ -56,7 +38,8 @@ type PhotoStorage struct {
 	update    *UpdateManager
 	thumbnail *ThumbnailManager
 
-	userService *user.UserService
+	username    string
+	userService *UserManager
 
 	albumRegistry *registery.Registry[model.Album]
 
@@ -115,7 +98,9 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		config: cfg,
 		cache:  NewLRUCache(cfg.CacheSize),
 
-		userService:   user.NewUserService(cfg.AppDir),
+		username:    "Mahdi_Abdolmaleki",
+		userService: NewUserManager(cfg.AppDir),
+
 		metadata:      NewMetadataManager(cfg.MetadataDir),
 		update:        NewUpdateManager(cfg.MetadataDir),
 		albumRegistry: registery.NewRegistry[model.Album](),
@@ -158,10 +143,10 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		return nil, fmt.Errorf("failed to initialize index: %w", err)
 	}
 
-	assets2, err := ps.metadata.LoadAllMetadata()
+	assets2, err := ps.metadata.LoadUserAllMetadata()
 	if err != nil {
 	}
-	assets = assets2
+	mahdiAssets = assets2
 
 	// Start background maintenance
 	go ps.periodicMaintenance()
@@ -602,8 +587,8 @@ func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model
 	return assets[start:end], total, nil
 }
 
-// SearchAssetsV2 searches assets based on criteria
-func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+// FilterAssets searches assets based on criteria
+func (ps *PhotoStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
 
@@ -620,9 +605,9 @@ func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*mod
 	var matches []*model.PHAsset
 	totalCount := 0
 
-	for i := range assets {
-		if criteria(assets[i]) {
-			matches = append(matches, &assets[i])
+	for i := range mahdiAssets {
+		if criteria(mahdiAssets[i]) {
+			matches = append(matches, &mahdiAssets[i])
 			totalCount++
 		}
 	}
@@ -648,7 +633,7 @@ func (ps *PhotoStorage) SearchAssetsV2(filters model.AssetSearchFilters) ([]*mod
 
 	// Log performance
 	duration := time.Since(startTime)
-	log.Printf("SearchAssets: scanned %d assets, found %d matches, returned %d (in %v)", len(assets), totalCount, len(paginated), duration)
+	log.Printf("SearchAssets: scanned %d assets, found %d matches, returned %d (in %v)", len(mahdiAssets), totalCount, len(paginated), duration)
 
 	return paginated, totalCount, nil
 }
@@ -1185,7 +1170,7 @@ func (ps *PhotoStorage) periodicMaintenance() {
 	}
 }
 
-// cleanupOrphanedAssets removes assets with missing files
+// cleanupOrphanedAssets removes mahdiAssets with missing files
 func (ps *PhotoStorage) cleanupOrphanedAssets() {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -1210,7 +1195,7 @@ func (ps *PhotoStorage) cleanupOrphanedAssets() {
 	}
 }
 
-// filterByText filters assets by search query
+// filterByText filters mahdiAssets by search query
 func (ps *PhotoStorage) filterByText(assetIDs []int, query string) []int {
 	query = strings.ToLower(query)
 	words := strings.Fields(query)
@@ -1252,7 +1237,7 @@ func (ps *PhotoStorage) filterByText(assetIDs []int, query string) []int {
 	return filtered
 }
 
-// filterByMediaType filters assets by media type
+// filterByMediaType filters mahdiAssets by media type
 func (ps *PhotoStorage) filterByMediaType(assetIDs []int, mediaType string) []int {
 	// Get all assets of this type
 	typeAssets := make(map[int]bool)
@@ -1271,7 +1256,7 @@ func (ps *PhotoStorage) filterByMediaType(assetIDs []int, mediaType string) []in
 	return filtered
 }
 
-// filterByFavorite filters assets by favorite status
+// filterByFavorite filters mahdiAssets by favorite status
 func (ps *PhotoStorage) filterByFavorite(assetIDs []int, favorite bool) []int {
 	filtered := make([]int, 0, len(assetIDs))
 	for _, id := range assetIDs {
@@ -1282,7 +1267,7 @@ func (ps *PhotoStorage) filterByFavorite(assetIDs []int, favorite bool) []int {
 	return filtered
 }
 
-// filterByScreenshot filters assets by favorite status
+// filterByScreenshot filters mahdiAssets by favorite status
 func (ps *PhotoStorage) filterByScreenshot(assetIDs []int, screenshot bool) []int {
 	filtered := make([]int, 0, len(assetIDs))
 	for _, id := range assetIDs {
@@ -1293,7 +1278,7 @@ func (ps *PhotoStorage) filterByScreenshot(assetIDs []int, screenshot bool) []in
 	return filtered
 }
 
-// filterByDateRange filters assets by date range
+// filterByDateRange filters mahdiAssets by date range
 func (ps *PhotoStorage) filterByDateRange(assetIDs []int, start, end *time.Time) []int {
 	filtered := make([]int, 0, len(assetIDs))
 

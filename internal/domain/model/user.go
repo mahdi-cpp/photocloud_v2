@@ -1,6 +1,10 @@
-package user
+package model
 
 import "time"
+
+type UserCollection struct {
+	Users []User `json:"users,omitempty"`
+}
 
 type User struct {
 	ID          int       `gorm:"primaryKey;autoIncrement" json:"id"`
@@ -15,23 +19,4 @@ type User struct {
 	LastSeen    time.Time `json:"lastSeen"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
-}
-
-type CreateUserRequest struct {
-	Username    string `json:"username" binding:"required"`
-	PhoneNumber string `json:"phoneNumber" binding:"required"`
-	Email       string `json:"email"`
-	FirstName   string `json:"firstName"`
-	LastName    string `json:"lastName"`
-	Bio         string `json:"bio"`
-}
-
-type UpdateUserRequest struct {
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Bio       string `json:"bio"`
-	AvatarURL string `json:"avatarUrl"`
-	IsOnline  bool   `json:"isOnline"`
 }

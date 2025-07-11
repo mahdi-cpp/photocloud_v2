@@ -20,7 +20,9 @@ type MetadataManager struct {
 }
 
 func NewMetadataManager(dir string) *MetadataManager {
-	return &MetadataManager{dir: dir}
+	return &MetadataManager{
+		dir: dir,
+	}
 }
 
 // SaveMetadata saves asset metadata
@@ -61,7 +63,7 @@ func (m *MetadataManager) LoadMetadata(id int) (*model.PHAsset, error) {
 	return &asset, nil
 }
 
-func (m *MetadataManager) LoadAllMetadata() ([]model.PHAsset, error) {
+func (m *MetadataManager) LoadUserAllMetadata() ([]model.PHAsset, error) {
 
 	startTime := time.Now() // Capture start time
 	var assets []model.PHAsset

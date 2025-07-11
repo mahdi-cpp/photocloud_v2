@@ -17,7 +17,7 @@ func NewAssetRepository(storage *PhotoStorage) *AssetRepositoryImpl {
 	return &AssetRepositoryImpl{storage: storage}
 }
 
-func (r *AssetRepositoryImpl) CreateAsset(ctx context.Context, asset *model.PHAsset, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
+func (r *AssetRepositoryImpl) UploadAsset(ctx context.Context, asset *model.PHAsset, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
 
 	// Use the storage to upload the asset
 	createdAsset, err := r.storage.UploadAsset(asset.UserID, file, header)
@@ -111,8 +111,8 @@ func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters model.As
 	return r.storage.SearchAssets(filters)
 }
 
-func (r *AssetRepositoryImpl) SearchAssetsV2(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
-	return r.storage.SearchAssetsV2(filters)
+func (r *AssetRepositoryImpl) FilterAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+	return r.storage.FilterAssets(filters)
 }
 
 func (r *AssetRepositoryImpl) SuggestSearchTerms(ctx context.Context, userID int, prefix string, limit int) ([]string, error) {

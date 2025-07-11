@@ -48,7 +48,7 @@ type PHAsset struct {
 
 // AssetSearchFilters defines search parameters
 type AssetSearchFilters struct {
-	UserID      int
+	UserID      int `json:"userID"`
 	Query       string
 	MediaType   MediaType
 	PixelWidth  int

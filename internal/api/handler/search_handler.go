@@ -14,7 +14,7 @@ func (h *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	assets, total, err := h.assetRepo.SearchAssetsV2(c, filters)
+	assets, total, err := h.userStorageManager.FilterAssets(c, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
