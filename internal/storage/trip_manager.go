@@ -16,21 +16,21 @@ type TripManager struct {
 
 func NewTripManager(path string) (*TripManager, error) {
 	//return &TripManager{
-	//	metadata: NewMetadataManagerV2[model.TripCollection](path),
+	//	metadata: NewMetadataControl[model.TripCollection](path),
 	//}
 
 	manager := &TripManager{
 		registry: registery.NewRegistry[model.Trip](),
-		metadata: NewMetadataManagerV2[model.TripCollection](path),
+		metadata: NewMetadataControl[model.TripCollection](path),
 	}
 
-	albums, err := manager.load()
+	trips, err := manager.load()
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
 	}
 
-	for _, album := range albums {
-		manager.registry.Register(strconv.Itoa(album.ID), album)
+	for _, trip := range trips {
+		manager.registry.Register(strconv.Itoa(trip.ID), trip)
 	}
 
 	return manager, nil
@@ -49,13 +49,12 @@ func (manager *TripManager) Create(name string) (*model.Trip, error) {
 			}
 		}
 
-		// Create new trip
+		// Handler new trip
 		newTrip = &model.Trip{
 			ID:   maxID + 1,
 			Name: name,
 			//TripType:         tripType,
 			//IsCollection:     isCollection,
-			IsHidden:         false,
 			CreationDate:     time.Now(),
 			ModificationDate: time.Now(),
 		}
@@ -68,7 +67,7 @@ func (manager *TripManager) Create(name string) (*model.Trip, error) {
 	return newTrip, err
 }
 
-func (manager *TripManager) Update(id int, name string, tripType string, isHidden bool) (*model.Trip, error) {
+func (manager *TripManager) Update(id int, name string) (*model.Trip, error) {
 	var updated *model.Trip
 
 	err := manager.metadata.Update(func(trips *model.TripCollection) error {
@@ -76,8 +75,7 @@ func (manager *TripManager) Update(id int, name string, tripType string, isHidde
 			if trip.ID == id {
 				// Update fields
 				trips.Trips[i].Name = name
-				trips.Trips[i].TripType = tripType
-				trips.Trips[i].IsHidden = isHidden
+				//trips.Trips[i].TripType = tripType
 				trips.Trips[i].ModificationDate = time.Now()
 
 				updated = &trips.Trips[i]
@@ -126,24 +124,9 @@ func (manager *TripManager) GetList(includeHidden bool) ([]model.Trip, error) {
 
 	var result []model.Trip
 	for _, trip := range trips.Trips {
-		if !trip.IsHidden || includeHidden {
-			result = append(result, trip)
-		}
-	}
-	return result, nil
-}
-
-func (manager *TripManager) GetByType(tripType string) ([]model.Trip, error) {
-	trips, err := manager.metadata.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	var result []model.Trip
-	for _, trip := range trips.Trips {
-		if trip.TripType != "" && trip.TripType == tripType {
-			result = append(result, trip)
-		}
+		//if !trip.IsHidden || includeHidden {
+		result = append(result, trip)
+		//}
 	}
 	return result, nil
 }

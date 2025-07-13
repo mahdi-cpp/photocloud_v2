@@ -48,8 +48,8 @@ func (r *AssetRepositoryImpl) UpdateAsset(ctx context.Context, assetIds []int, u
 	return r.storage.UpdateAsset(assetIds, update)
 }
 
-//func (r *AssetRepositoryImpl) Create(ctx context.Context, createAlbum model.Album) (string, error) {
-//	r.storage.Create()
+//func (r *AssetRepositoryImpl) Handler(ctx context.Context, createAlbum model.Album) (string, error) {
+//	r.storage.Handler()
 //	return "", nil
 //}
 

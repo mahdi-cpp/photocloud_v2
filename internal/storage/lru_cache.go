@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-// LRUCache implements a Least Recently Used cache
+// LRUCache implements a Least Recently Used memory
 type LRUCache struct {
 	capacity int
 	cache    map[int]*list.Element
@@ -19,7 +19,7 @@ type cacheItem struct {
 	asset *model.PHAsset
 }
 
-// NewLRUCache creates a new LRU cache
+// NewLRUCache creates a new LRU memory
 func NewLRUCache(capacity int) *LRUCache {
 	return &LRUCache{
 		capacity: capacity,
@@ -28,7 +28,7 @@ func NewLRUCache(capacity int) *LRUCache {
 	}
 }
 
-// Get retrieves an asset from cache
+// Get retrieves an asset from memory
 func (c *LRUCache) Get(id int) (*model.PHAsset, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -40,7 +40,7 @@ func (c *LRUCache) Get(id int) (*model.PHAsset, bool) {
 	return nil, false
 }
 
-// Put adds an asset to cache
+// Put adds an asset to memory
 func (c *LRUCache) Put(id int, asset *model.PHAsset) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -66,7 +66,7 @@ func (c *LRUCache) Put(id int, asset *model.PHAsset) {
 	}
 }
 
-// Remove deletes an asset from cache
+// Remove deletes an asset from memory
 func (c *LRUCache) Remove(id int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -82,7 +82,7 @@ func (c *LRUCache) removeElement(elem *list.Element) {
 	delete(c.cache, item.key)
 }
 
-// Len returns current cache size
+// Len returns current memory size
 func (c *LRUCache) Len() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()

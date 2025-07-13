@@ -42,6 +42,7 @@ type PHAsset struct {
 	// Advanced Properties
 	IsUserLibraryAsset bool `gorm:"default:true" json:"IsUserLibraryAsset"`
 
+	CapturedDate     time.Time `json:"capturedDate"`
 	CreationDate     time.Time `json:"creationDate"`
 	ModificationDate time.Time `json:"modificationDate"`
 }
@@ -76,13 +77,13 @@ type AssetSearchFilters struct {
 	SortBy    string `json:"sortBy"`    // Field to sort by (e.g., "creationDate", "filename")
 	SortOrder string `json:"sortOrder"` // "asc" or "desc"
 
-	Limit  int
-	Offset int
+	FetchOffset int
+	FetchLimit  int
 }
 
 type AssetUpdate struct {
-	AssetIds    []int   `json:"assetIds,omitempty"` // Asset Ids
 	UserID      int     `json:"userID"`
+	AssetIds    []int   `json:"assetIds,omitempty"` // Asset Ids
 	Filename    *string `json:"filename,omitempty"`
 	CameraMake  *string `json:"cameraMake,omitempty"`
 	CameraModel *string `json:"cameraModel,omitempty"`

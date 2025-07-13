@@ -77,7 +77,7 @@ func updateJSONFile[T any](filePath string, updateFunc func(*T) error) error {
 		return err
 	}
 
-	// Create temp file
+	// Handler temp file
 	dir := filepath.Dir(filePath)
 	tmpFile, err := os.CreateTemp(dir, "tmp-*.json")
 	if err != nil {
@@ -116,7 +116,7 @@ func (update *UpdateManager) OverwriteJSONFile(filePath string, data interface{}
 		return err
 	}
 
-	// Create temp file in same directory
+	// Handler temp file in same directory
 	dir := filepath.Dir(filePath)
 	tmpFile, err := os.CreateTemp(dir, "tmp-*.json")
 	if err != nil {

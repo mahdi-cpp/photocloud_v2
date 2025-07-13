@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"net/http"
@@ -22,10 +23,11 @@ func (h *SearchHandler) Filters(c *gin.Context) {
 	var filters model.AssetSearchFilters
 	if err := c.ShouldBindJSON(&filters); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		fmt.Println("Invalid request")
 		return
 	}
 
-	//fmt.Println("Filters userId: ", filters.UserID)
+	fmt.Println("Filters userId: ", filters.UserID)
 
 	assets, total, err := h.userStorageManager.FilterAssets(c, filters)
 	if err != nil {
@@ -33,11 +35,13 @@ func (h *SearchHandler) Filters(c *gin.Context) {
 		return
 	}
 
+	fmt.Println("Filters count: ", len(assets))
+
 	c.JSON(http.StatusOK, FilterResponse{
 		Results: assets,
 		Total:   total,
-		Limit:   filters.Limit,
-		Offset:  filters.Offset,
+		Limit:   filters.FetchLimit,
+		Offset:  filters.FetchOffset,
 	})
 }
 

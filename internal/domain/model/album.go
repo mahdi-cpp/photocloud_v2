@@ -17,8 +17,10 @@ type Album struct {
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
-type AlbumUpdate struct {
-	Name         *string `json:"name,omitempty"`
-	IsCollection *bool   `json:"IsCollection,omitempty"`
-	IsHidden     *bool   `json:"isHidden,omitempty"`
+type AlbumHandler struct {
+	UserID       int    `json:"userID"`
+	ID           int    `json:"id"`
+	Name         string `json:"name,omitempty"`
+	IsCollection bool   `json:"IsCollection,omitempty"`
+	IsHidden     bool   `json:"isHidden,omitempty"`
 }

@@ -23,7 +23,7 @@ func (h *SearchHandler) Search(c *gin.Context) {
 	c.JSON(http.StatusOK, FilterResponse{
 		Results: assets,
 		Total:   total,
-		Limit:   filters.Limit,
-		Offset:  filters.Offset,
+		Limit:   filters.FetchLimit,
+		Offset:  filters.FetchOffset,
 	})
 }

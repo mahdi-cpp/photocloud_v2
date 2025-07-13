@@ -24,12 +24,15 @@ func main() {
 	}
 
 	storageCfg := storage.Config{
-		AppDir:        cfg.Storage.AppDir,
-		AssetsDir:     cfg.Storage.AssetsDir,
-		MetadataDir:   cfg.Storage.MetadataDir,
-		ThumbnailsDir: cfg.Storage.ThumbnailsDir,
-		IndexFile:     cfg.Storage.IndexFile,
-		CacheSize:     cfg.Storage.Cache.Size,
+		AppDir:               cfg.Storage.AppDir,
+		AssetsDir:            cfg.Storage.AssetsDir,
+		MetadataDir:          cfg.Storage.MetadataDir,
+		ThumbnailsDir:        cfg.Storage.ThumbnailsDir,
+		IndexFile:            cfg.Storage.IndexFile,
+		CacheSize:            cfg.Storage.Cache.Size,
+		AlbumCollectionFile:  cfg.Storage.AlbumCollectionFile,
+		TripCollectionFile:   cfg.Storage.TripCollectionFile,
+		PersonCollectionFile: cfg.Storage.PersonCollectionFile,
 	}
 
 	userStorageManager, err := storage.NewUserStorageManager(storageCfg)
@@ -37,16 +40,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Create handlers
+	// Handler handlers
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
 	//systemHandler := handler.NewSystemHandler(userStorageManager)
 
+	pinnedHandler := handler.NewPinnedHandler(userStorageManager)
 	albumHandler := handler.NewAlbumHandler(userStorageManager)
 	tripHandler := handler.NewTripHandler(userStorageManager)
+	personHandler := handler.NewPersonHandler(userStorageManager)
 
-	// Create Gin router
-	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, searchHandler)
+	// Handler Gin router
+	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler)
 
 	// Start server
 	startServer(cfg, router)
@@ -97,12 +102,14 @@ func createRouter(
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
 	tripHandler *handler.TripHandler,
+	personHandler *handler.PersonHandler,
 	searchHandler *handler.SearchHandler,
+	pinnedHandler *handler.PinnedHandler,
 ) *gin.Engine {
 	// Set Gin mode
 	gin.SetMode(cfg.Server.Mode)
 
-	// Create router with default middleware
+	// Handler router with default middleware
 	router := gin.Default()
 
 	// API routes
@@ -117,14 +124,29 @@ func createRouter(
 		api.GET("/assets/:id", assetHandler.Get)
 		api.POST("/assets/update", assetHandler.Update)
 		api.POST("/assets/delete", assetHandler.Delete)
+		api.GET("/assets/download/:filename", assetHandler.OriginalDownload)
+		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
+		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
 
-		api.GET("/album/getList", albumHandler.GetList)
+		api.POST("/pinned/create", pinnedHandler.Create)
+		api.POST("/pinned/update", pinnedHandler.Update)
+		api.POST("/pinned/delete", pinnedHandler.Delete)
+		api.GET("/pinned/getList", pinnedHandler.GetList)
+
 		api.POST("/album/create", albumHandler.Create)
 		api.POST("/album/update", albumHandler.Update)
 		api.POST("/album/delete", albumHandler.Delete)
+		api.GET("/album/getList", albumHandler.GetList)
 
-		api.GET("/trip/getList", tripHandler.GetList)
 		api.POST("/trip/create", tripHandler.Create)
+		api.POST("/trip/update", tripHandler.Update)
+		api.POST("/trip/delete", tripHandler.Delete)
+		api.GET("/trip/getList", tripHandler.GetList)
+
+		api.POST("/person/create", personHandler.Create)
+		api.POST("/person/update", personHandler.Update)
+		api.POST("/person/delete", personHandler.Delete)
+		api.GET("/person/getList", personHandler.GetList)
 
 		//api.PUT("/assets/:id", assetHandler.Update)
 		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)
@@ -148,7 +170,7 @@ func createRouter(
 
 func startServer(cfg *config.Config, router *gin.Engine) {
 
-	// Create HTTP server
+	// Handler HTTP server
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
 		Handler: router,

@@ -8,15 +8,15 @@ import (
 	"strconv"
 )
 
-type TripHandler struct {
+type PinnedHandler struct {
 	userStorageManager *storage.UserStorageManager
 }
 
-func NewTripHandler(userStorageManager *storage.UserStorageManager) *TripHandler {
-	return &TripHandler{userStorageManager: userStorageManager}
+func NewPinnedHandler(userStorageManager *storage.UserStorageManager) *PinnedHandler {
+	return &PinnedHandler{userStorageManager: userStorageManager}
 }
 
-func (handler *TripHandler) GetList(c *gin.Context) {
+func (handler *PinnedHandler) GetList(c *gin.Context) {
 
 	userIDStr := c.Query("userID") // Get the string value
 	userID, err := strconv.Atoi(userIDStr)
@@ -27,7 +27,7 @@ func (handler *TripHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, userID)
+	manager := handler.userStorageManager.GetPinnedManager(c, userID)
 	data, err := manager.GetList(true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -37,25 +37,24 @@ func (handler *TripHandler) GetList(c *gin.Context) {
 	c.JSON(http.StatusCreated, data)
 }
 
-func (handler *TripHandler) Create(c *gin.Context) {
+func (handler *PinnedHandler) Create(c *gin.Context) {
 
-	var trip model.TripHandler
-	if err := c.ShouldBindJSON(&trip); err != nil {
+	var pinned model.PinnedHandler
+	if err := c.ShouldBindJSON(&pinned); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, 4)
-	data, err := manager.Create(trip.Name)
+	manager := handler.userStorageManager.GetPinnedManager(c, 4)
+	data, err := manager.Create(pinned.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 	c.JSON(http.StatusCreated, data)
-
 }
 
-func (handler *TripHandler) Update(c *gin.Context) {
+func (handler *PinnedHandler) Update(c *gin.Context) {
 
 	var album model.AlbumHandler
 	if err := c.ShouldBindJSON(&album); err != nil {
@@ -63,7 +62,7 @@ func (handler *TripHandler) Update(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, album.UserID)
+	manager := handler.userStorageManager.GetPinnedManager(c, album.UserID)
 	album2, err := manager.Update(album.ID, album.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -73,7 +72,7 @@ func (handler *TripHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusCreated, album2)
 }
 
-func (handler *TripHandler) Delete(c *gin.Context) {
+func (handler *PinnedHandler) Delete(c *gin.Context) {
 
 	var album model.Album
 	if err := c.ShouldBindJSON(&album); err != nil {

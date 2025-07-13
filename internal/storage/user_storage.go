@@ -24,6 +24,8 @@ type UserStorage struct {
 	assets            []model.PHAsset
 	albumManager      *AlbumManager
 	tripManager       *TripManager
+	personManager     *PersonManager
+	pinnedManager     *PinnedManager
 	metadata          *MetadataManager
 	thumbnail         *ThumbnailManager
 	lastID            int
@@ -47,7 +49,7 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// Create asset filename
+	// Handler asset filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%d%s", 1, ext)
 	assetPath := filepath.Join(us.config.AssetsDir, filename)
@@ -67,7 +69,7 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 	}
 	mediaType := GetMediaType(ext)
 
-	// Create asset
+	// Handler asset
 	asset := &model.PHAsset{
 		ID:           us.lastID,
 		UserID:       userID,
@@ -164,7 +166,7 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 			asset.Albums = *update.Albums
 		case len(update.AddAlbums) > 0 || len(update.RemoveAlbums) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			albumSet := make(map[int]bool)
 			for _, id := range asset.Albums {
 				albumSet[id] = true
@@ -202,13 +204,13 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 			asset.Trips = *update.Trips
 		case len(update.AddTrips) > 0 || len(update.RemoveTrips) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			tripSet := make(map[int]bool)
 			for _, id := range asset.Trips {
 				tripSet[id] = true
 			}
 
-			// Add new Trips (avoid duplicates)
+			// Add new Persons (avoid duplicates)
 			for _, id := range update.AddTrips {
 				if !tripSet[id] {
 					asset.Trips = append(asset.Trips, id)
@@ -240,7 +242,7 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 			asset.Persons = *update.Persons
 		case len(update.AddPersons) > 0 || len(update.RemovePersons) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			personSet := make(map[int]bool)
 			for _, id := range asset.Persons {
 				personSet[id] = true
@@ -281,8 +283,8 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 		// Update indexes
 		//us.updateIndexesForAsset(asset)
 
-		// Update cache
-		//us.cache.Put(id, asset)
+		// Update memory
+		//us.memory.Put(id, asset)
 	}
 
 	// Merging strings with the integer ID
@@ -318,8 +320,8 @@ func (us *UserStorage) DeleteAsset(id int) error {
 	// Remove from indexes
 	//us.removeFromIndexes(id)
 
-	// Remove from cache
-	//us.cache.Remove(id)
+	// Remove from memory
+	//us.memory.Remove(id)
 
 	// Update stats
 	us.statsMu.Lock()
@@ -339,7 +341,7 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 	us.mu.RLock()
 	defer us.mu.RUnlock()
 
-	startTime := time.Now()
+	//startTime := time.Now()
 
 	// Step 1: Build criteria from filters
 	criteria := assetBuildCriteria(filters)
@@ -359,26 +361,28 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 	assetSortAssets(matches, filters.SortBy, filters.SortOrder)
 
 	// Step 3: Apply pagination
-	start := filters.Offset
-	if start < 0 {
-		start = 0
-	}
-	if start > len(matches) {
-		start = len(matches)
-	}
-
-	end := start + filters.Limit
-	if end > len(matches) || filters.Limit <= 0 {
-		end = len(matches)
-	}
-
-	paginated := matches[start:end]
+	//start := filters.FetchOffset
+	//if start < 0 {
+	//	start = 0
+	//}
+	//if start > len(matches) {
+	//	start = len(matches)
+	//}
+	//
+	//end := start + filters.FetchLimit
+	//if end > len(matches) || filters.FetchLimit <= 0 {
+	//	end = len(matches)
+	//}
+	//
+	//paginated := matches[start:end]
 
 	// Log performance
-	duration := time.Since(startTime)
-	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
+	//duration := time.Since(startTime)
+	//log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
 
-	return paginated, totalCount, nil
+	fmt.Println("matches: ", len(matches))
+
+	return matches, totalCount, nil
 }
 
 // ========================

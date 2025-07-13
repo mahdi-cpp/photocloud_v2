@@ -1,0 +1,38 @@
+
+assets:
+    create
+    edit
+    delete
+    fetch(filters)
+
+pinned:
+    create
+    edit
+    delete
+    getById
+    getByName
+    getAll
+
+albums:
+    create
+    edit
+    delete
+    getById
+    getAll
+
+persons:
+    create
+    edit
+    delete
+    getById
+    getAll
+
+trips:
+    create
+    edit
+    delete
+    getById
+    getAll
+
+setting:
+

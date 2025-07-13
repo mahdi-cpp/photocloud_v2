@@ -18,7 +18,7 @@ func NewAlbumManager(path string) (*AlbumManager, error) {
 
 	manager := &AlbumManager{
 		registry: registery.NewRegistry[model.Album](),
-		metadata: NewMetadataManagerV2[model.AlbumCollection](path),
+		metadata: NewMetadataControl[model.AlbumCollection](path),
 	}
 
 	albums, err := manager.load()
@@ -60,7 +60,7 @@ func (manager *AlbumManager) Create(name string, albumType string, isCollection 
 			}
 		}
 
-		// Create new album
+		// Handler new album
 		newAlbum = &model.Album{
 			ID:               maxID + 1,
 			Name:             name,

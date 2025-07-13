@@ -67,16 +67,17 @@ type CORSConfig struct {
 
 // StorageConfig defines storage settings
 type StorageConfig struct {
-	AppDir              string       `mapstructure:"app_dir"`
-	AssetsDir           string       `mapstructure:"assets_dir"`
-	MetadataDir         string       `mapstructure:"metadata_dir"`
-	ThumbnailsDir       string       `mapstructure:"thumbnails_dir"`
-	IndexFile           string       `mapstructure:"index_file"`
-	AlbumCollectionFile string       `mapstructure:"albumCollection_file"`
-	TripCollectionFile  string       `mapstructure:"tripCollection_file"`
-	Cache               CacheConfig  `mapstructure:"cache"`
-	Index               IndexConfig  `mapstructure:"index"`
-	Upload              UploadConfig `mapstructure:"upload"`
+	AppDir               string       `mapstructure:"app_dir"`
+	AssetsDir            string       `mapstructure:"assets_dir"`
+	MetadataDir          string       `mapstructure:"metadata_dir"`
+	ThumbnailsDir        string       `mapstructure:"thumbnails_dir"`
+	IndexFile            string       `mapstructure:"index_file"`
+	AlbumCollectionFile  string       `mapstructure:"albumCollection_file"`
+	TripCollectionFile   string       `mapstructure:"tripCollection_file"`
+	PersonCollectionFile string       `mapstructure:"personCollection_file"`
+	Cache                CacheConfig  `mapstructure:"cache"`
+	Index                IndexConfig  `mapstructure:"index"`
+	Upload               UploadConfig `mapstructure:"upload"`
 }
 
 func (c *StorageConfig) Validate() error {

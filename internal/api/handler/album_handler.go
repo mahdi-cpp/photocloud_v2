@@ -49,13 +49,15 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 
 func (handler *AlbumHandler) Update(c *gin.Context) {
 
-	var album model.Album
+	var album model.AlbumHandler
 	if err := c.ShouldBindJSON(&album); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	albumManager := handler.userStorageManager.GetAlbumManager(c, 4)
+	fmt.Println("Album Update: ", album.ID)
+
+	albumManager := handler.userStorageManager.GetAlbumManager(c, album.UserID)
 	album2, err := albumManager.Update(album.ID, album.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})

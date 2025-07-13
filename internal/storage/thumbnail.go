@@ -93,7 +93,7 @@ func (s *ThumbnailService) generateVideoThumbnail(asset *model.PHAsset, content 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Create temp file
+	// Handler temp file
 	tmpFile, err := os.CreateTemp("", "video-*.mp4")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
@@ -106,7 +106,7 @@ func (s *ThumbnailService) generateVideoThumbnail(asset *model.PHAsset, content 
 		return nil, fmt.Errorf("failed to write video content: %w", err)
 	}
 
-	// Create output buffer
+	// Handler output buffer
 	buf := bytes.NewBuffer(nil)
 
 	// Use ffmpeg to extract thumbnail

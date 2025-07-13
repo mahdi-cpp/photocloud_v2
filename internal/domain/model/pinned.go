@@ -2,21 +2,20 @@ package model
 
 import "time"
 
-type TripCollection struct {
-	Trips []Trip `json:"trips,omitempty"`
+type PinnedCollection struct {
+	Pins []Pinned `json:"pins,omitempty"`
 }
 
-type Trip struct {
+type Pinned struct {
 	ID               int       `json:"id"`
 	Name             string    `json:"name"`
-	TripType         string    `json:"tripType,omitempty"`
 	Count            int       `json:"count"`
 	IsCollection     bool      `json:"isCollection"`
 	CreationDate     time.Time `json:"creationDate"`
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
-type TripHandler struct {
+type PinnedHandler struct {
 	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`

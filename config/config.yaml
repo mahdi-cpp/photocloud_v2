@@ -18,8 +18,9 @@ storage:
   metadata_dir: "metadata"
   thumbnails_dir: "thumbnails"
   index_file: "index.json"
-  albumCollection_file: "albumCollection_file.json"
-  tripCollection_file: "tripCollection_file.json"
+  albumCollection_file: "albumCollection.json"
+  tripCollection_file: "tripCollection.json"
+  personCollection_file: "personCollection.json"
 
   cache:
     size: 1000     # Number of assets to keep in LRU cache

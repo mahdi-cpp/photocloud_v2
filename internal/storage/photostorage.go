@@ -68,30 +68,10 @@ type PhotoStorage struct {
 	stats   Stats
 }
 
-// Config defines storage system configuration
-type Config struct {
-	AppDir        string
-	AssetsDir     string
-	MetadataDir   string
-	ThumbnailsDir string
-	IndexFile     string
-	CacheSize     int
-	MaxUploadSize int64
-}
-
-// Stats holds storage system statistics
-type Stats struct {
-	TotalAssets   int
-	CacheHits     int64
-	CacheMisses   int64
-	Uploads24h    int
-	ThumbnailsGen int
-}
-
 // NewPhotoStorage creates a new storage instance
 func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 
-	// Create context for background workers
+	// Handler context for background workers
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ps := &PhotoStorage{
@@ -184,7 +164,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// Create asset filename
+	// Handler asset filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%d%s", ps.nextID(), ext)
 	assetPath := filepath.Join(ps.config.AssetsDir, filename)
@@ -204,7 +184,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 	}
 	mediaType := GetMediaType(ext)
 
-	// Create asset
+	// Handler asset
 	asset := &model.PHAsset{
 		ID:           ps.lastID,
 		UserID:       userID,
@@ -237,7 +217,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 
 // GetAsset retrieves an asset by ID
 func (ps *PhotoStorage) GetAsset(id int) (*model.PHAsset, error) {
-	// Check cache first
+	// Check memory first
 	if asset, found := ps.cache.Get(id); found {
 		return asset, nil
 	}
@@ -248,7 +228,7 @@ func (ps *PhotoStorage) GetAsset(id int) (*model.PHAsset, error) {
 		return nil, err
 	}
 
-	// Add to cache
+	// Add to memory
 	ps.cache.Put(id, asset)
 
 	return asset, nil
@@ -308,7 +288,7 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 			asset.Albums = *update.Albums
 		case len(update.AddAlbums) > 0 || len(update.RemoveAlbums) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			albumSet := make(map[int]bool)
 			for _, id := range asset.Albums {
 				albumSet[id] = true
@@ -346,13 +326,13 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 			asset.Trips = *update.Trips
 		case len(update.AddTrips) > 0 || len(update.RemoveTrips) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			tripSet := make(map[int]bool)
 			for _, id := range asset.Trips {
 				tripSet[id] = true
 			}
 
-			// Add new Trips (avoid duplicates)
+			// Add new Persons (avoid duplicates)
 			for _, id := range update.AddTrips {
 				if !tripSet[id] {
 					asset.Trips = append(asset.Trips, id)
@@ -384,7 +364,7 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 			asset.Persons = *update.Persons
 		case len(update.AddPersons) > 0 || len(update.RemovePersons) > 0:
 
-			// Create a set for efficient lookups
+			// Handler a set for efficient lookups
 			personSet := make(map[int]bool)
 			for _, id := range asset.Persons {
 				personSet[id] = true
@@ -425,7 +405,7 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 		// Update indexes
 		ps.updateIndexesForAsset(asset)
 
-		// Update cache
+		// Update memory
 		ps.cache.Put(id, asset)
 	}
 
@@ -435,8 +415,8 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 	return merged, nil
 }
 
-// Create updates asset metadata
-//func (ps *PhotoStorage) Create(ctx context.Context, createAlbum model.Album) (string, error) {
+// Handler updates asset metadata
+//func (ps *PhotoStorage) Handler(ctx context.Context, createAlbum model.Album) (string, error) {
 //
 //}
 
@@ -468,7 +448,7 @@ func (ps *PhotoStorage) DeleteAsset(id int) error {
 	// Remove from indexes
 	ps.removeFromIndexes(id)
 
-	// Remove from cache
+	// Remove from memory
 	ps.cache.Remove(id)
 
 	// Update stats
@@ -575,11 +555,11 @@ func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model
 	}
 
 	// Apply pagination
-	start := filters.Offset
+	start := filters.FetchOffset
 	if start > len(assets) {
 		start = len(assets)
 	}
-	end := start + filters.Limit
+	end := start + filters.FetchLimit
 	if end > len(assets) {
 		end = len(assets)
 	}
@@ -616,7 +596,7 @@ func (ps *PhotoStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model
 	sortAssets(matches, filters.SortBy, filters.SortOrder)
 
 	// Step 3: Apply pagination
-	start := filters.Offset
+	start := filters.FetchOffset
 	if start < 0 {
 		start = 0
 	}
@@ -624,8 +604,8 @@ func (ps *PhotoStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model
 		start = len(matches)
 	}
 
-	end := start + filters.Limit
-	if end > len(matches) || filters.Limit <= 0 {
+	end := start + filters.FetchLimit
+	if end > len(matches) || filters.FetchLimit <= 0 {
 		end = len(matches)
 	}
 

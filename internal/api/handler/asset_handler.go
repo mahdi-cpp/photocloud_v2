@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ func (h *AssetHandler) Upload(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Create asset metadata
+	// Handler asset metadata
 	asset := &model.PHAsset{
 		UserID:   userID,
 		Filename: header.Filename,
@@ -151,4 +152,73 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, "successful delete asset with id: "+strconv.Itoa(request.AssetID))
+}
+
+//----------------------------------------
+
+func (h *AssetHandler) OriginalDownload(c *gin.Context) {
+
+	filename := c.Param("filename")
+	filepath, err := h.userStorageManager.RepositorySearch(filename)
+	if err != nil {
+		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
+		return
+	}
+
+	fileSize, err := storage.GetFileSize(filepath)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
+		return
+	}
+
+	//etag, err := generateETag(filepath)
+	//if err != nil {
+	//	c.AbortWithStatusJSON(500, gin.H{"error": "Failed to generate ETag"})
+	//	return
+	//}
+
+	//c.Header("Content-Type", "mage/jpeg")
+	//c.Header("Content-Encoding", "identity") // Disable compression
+	//c.Next()
+	c.Header("Content-Length", fmt.Sprintf("%d", fileSize))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.Header("Accept-Ranges", "bytes")
+	c.File(filepath)
+}
+
+func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
+	filename := c.Param("filename")
+
+	if strings.Contains(filename, "png") {
+		imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
+		if exists {
+			c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
+		}
+		return
+	}
+
+	imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
+	if exists {
+		fmt.Println("RAM")
+		c.Data(http.StatusOK, "image/jpeg", imgData) // Adjust MIME type as necessary
+	} else {
+
+		filepath, err := h.userStorageManager.RepositorySearch(filename)
+		if err != nil {
+			fmt.Println("SearchFile error", err)
+			return
+		}
+
+		fmt.Println("SSD")
+		c.File(filepath)
+		h.userStorageManager.AddTinyImage(filepath, filename)
+	}
+}
+
+func (h *AssetHandler) IconDownload(c *gin.Context) {
+	filename := c.Param("filename")
+	imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
+	if exists {
+		c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
+	}
 }

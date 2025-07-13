@@ -16,7 +16,7 @@ func NewUserManager(dir string) *UserManager {
 	manager := &UserManager{
 		dir:      dir,
 		users:    make(map[int]model.User),
-		metadata: NewMetadataManagerV2[model.UserCollection](dir),
+		metadata: NewMetadataControl[model.UserCollection](dir),
 	}
 
 	users, err := manager.load()

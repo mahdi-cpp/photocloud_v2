@@ -12,10 +12,3 @@ type AppSetting struct {
 	Logs  int    `json:"logs"`
 	Email string `json:"email"`
 }
-
-type UserProfile struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-}
