@@ -6,6 +6,7 @@ import (
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -159,23 +160,13 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 
 	filename := c.Param("filename")
-	filepath, err := h.userStorageManager.RepositorySearch(filename)
-	if err != nil {
-		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
-		return
-	}
+	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki", filename)
 
-	fileSize, err := storage.GetFileSize(filepath)
+	fileSize, err := storage.GetFileSize(filepath2)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
 		return
 	}
-
-	//etag, err := generateETag(filepath)
-	//if err != nil {
-	//	c.AbortWithStatusJSON(500, gin.H{"error": "Failed to generate ETag"})
-	//	return
-	//}
 
 	//c.Header("Content-Type", "mage/jpeg")
 	//c.Header("Content-Encoding", "identity") // Disable compression
@@ -183,42 +174,36 @@ func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 	c.Header("Content-Length", fmt.Sprintf("%d", fileSize))
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Header("Accept-Ranges", "bytes")
-	c.File(filepath)
+	c.File(filepath2)
 }
 
 func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
 	filename := c.Param("filename")
 
 	if strings.Contains(filename, "png") {
-		imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
-		if exists {
+		imgData, err := h.userStorageManager.RepositoryGetIcon(filename)
+		if err != nil {
+			fmt.Println("icon read error: ", err.Error())
+		} else {
 			c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
 		}
 		return
 	}
 
-	imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
-	if exists {
-		fmt.Println("RAM")
-		c.Data(http.StatusOK, "image/jpeg", imgData) // Adjust MIME type as necessary
+	filepathTiny := filepath.Join("mahdi_abdolmaleki/thumbnails", filename)
+
+	imgData, err := h.userStorageManager.RepositoryGetImage(filepathTiny)
+	if err != nil {
+		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
-
-		filepath, err := h.userStorageManager.RepositorySearch(filename)
-		if err != nil {
-			fmt.Println("SearchFile error", err)
-			return
-		}
-
-		fmt.Println("SSD")
-		c.File(filepath)
-		h.userStorageManager.AddTinyImage(filepath, filename)
+		c.Data(http.StatusOK, "image/jpeg", imgData)
 	}
 }
 
 func (h *AssetHandler) IconDownload(c *gin.Context) {
 	filename := c.Param("filename")
-	imgData, exists := h.userStorageManager.RepositoryGetImage(filename)
-	if exists {
+	imgData, err := h.userStorageManager.RepositoryGetImage(filename)
+	if err != nil {
 		c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
 	}
 }

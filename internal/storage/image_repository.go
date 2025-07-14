@@ -13,6 +13,8 @@ import (
 	"sync"
 )
 
+// https://chat.deepseek.com/a/chat/s/d3a14675-7d92-4bf8-a585-8e8db1fd0b62
+
 var folders = []string{
 	"/media/mahdi/Cloud/apps/Photos/ali_abdolmaleki/assets",
 	"/media/mahdi/Cloud/apps/Photos/ali_abdolmaleki/thumbnails",
@@ -23,7 +25,7 @@ var folders = []string{
 
 //var iconFolder = "/var/cloud/icons/"
 
-type ImageRepository struct {
+type ImageRepositoryV1 struct {
 	sync.RWMutex
 	memory map[string][]byte
 }
@@ -33,13 +35,13 @@ type ImageRepository struct {
 //	memory map[string][]byte
 //}
 
-//var tinyRepository = ImageRepository{memory: make(map[string][]byte)}
-//var iconRepository = ImageRepository{memory: make(map[string][]byte)}
+//var tinyRepository = ImageRepositoryV1{memory: make(map[string][]byte)}
+//var iconRepository = ImageRepositoryV1{memory: make(map[string][]byte)}
 
 //--------------------------------------------
 
-func NewImageRepository() *ImageRepository {
-	r := &ImageRepository{
+func NewImageRepository() *ImageRepositoryV1 {
+	r := &ImageRepositoryV1{
 		memory: make(map[string][]byte),
 	}
 
@@ -47,21 +49,21 @@ func NewImageRepository() *ImageRepository {
 	return r
 }
 
-func (r *ImageRepository) GetImage(filename string) ([]byte, bool) {
+func (r *ImageRepositoryV1) GetImage(filename string) ([]byte, bool) {
 	r.RLock()
 	imgData, exists := r.memory[filename]
 	r.RUnlock()
 	return imgData, exists
 }
 
-//func (r *ImageRepository) GetIconCash(filename string) ([]byte, bool) {
+//func (r *ImageRepositoryV1) GetIconCash(filename string) ([]byte, bool) {
 //	iconRepository.RLock()
 //	imgData, exists := iconRepository.cache[filename]
 //	iconRepository.RUnlock()
 //	return imgData, exists
 //}
 
-func (r *ImageRepository) SearchFile(filename string) (string, error) {
+func (r *ImageRepositoryV1) SearchFile(filename string) (string, error) {
 	for _, folder := range folders {
 		// Construct the full path to the file
 		fullPath := filepath.Join(folder, filename)
@@ -80,7 +82,7 @@ func (r *ImageRepository) SearchFile(filename string) (string, error) {
 	return "", fmt.Errorf("file %s not found in any of the specified folders", filename)
 }
 
-func (r *ImageRepository) AddTinyImage(filepath string, filename string) {
+func (r *ImageRepositoryV1) AddTinyImage(filepath string, filename string) {
 
 	originalImage, err := r.loadImage(filepath)
 	if err != nil {
@@ -100,7 +102,7 @@ func (r *ImageRepository) AddTinyImage(filepath string, filename string) {
 }
 
 // loadImage loads an image from a file.
-func (r *ImageRepository) loadImage(filePath string) (image.Image, error) {
+func (r *ImageRepositoryV1) loadImage(filePath string) (image.Image, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -114,7 +116,7 @@ func (r *ImageRepository) loadImage(filePath string) (image.Image, error) {
 	return img, nil
 }
 
-func (r *ImageRepository) loadIcons() {
+func (r *ImageRepositoryV1) loadIcons() {
 
 	// Specify the directory you want to read
 	dir := "/var/cloud/icons" // Change this to your target directory
@@ -140,7 +142,7 @@ func (r *ImageRepository) loadIcons() {
 }
 
 // convertImageToBytes converts an image.Image to a byte slice.
-func (r *ImageRepository) convertImageToBytes(img image.Image, format string) ([]byte, error) {
+func (r *ImageRepositoryV1) convertImageToBytes(img image.Image, format string) ([]byte, error) {
 	var buf bytes.Buffer
 	var err error
 
@@ -161,7 +163,7 @@ func (r *ImageRepository) convertImageToBytes(img image.Image, format string) ([
 	return buf.Bytes(), nil
 }
 
-func (r *ImageRepository) addIconCash(iconName string) {
+func (r *ImageRepositoryV1) addIconCash(iconName string) {
 	icon, err := r.loadImage("/var/cloud/icons/" + iconName) // Change path accordingly
 	if err != nil {
 		fmt.Println("Error loading image:", err)

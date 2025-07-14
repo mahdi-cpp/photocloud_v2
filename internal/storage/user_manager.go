@@ -26,7 +26,7 @@ func NewUserManager(dir string) *UserManager {
 
 	for _, user := range users {
 		manager.users[user.ID] = user
-		fmt.Println(user.Username)
+		//fmt.Println(user.Username)
 	}
 
 	return manager

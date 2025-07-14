@@ -5,8 +5,8 @@ go 1.23.6
 require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/gin-gonic/gin v1.10.1
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/spf13/viper v1.20.1
-	github.com/mahdi-cpp/photocloud_v2 v1.10.0
 )
 
 require (

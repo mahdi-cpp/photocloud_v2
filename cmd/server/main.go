@@ -7,6 +7,7 @@ import (
 	"github.com/mahdi-cpp/photocloud_v2/config"
 	"github.com/mahdi-cpp/photocloud_v2/internal/api/handler"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/lru_mahdi"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
@@ -15,7 +16,64 @@ import (
 	"syscall"
 )
 
+// formatBytes converts bytes to human-readable string
+func formatBytes(b int64) string {
+	const unit = 1024
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
 func main() {
+
+	// Initialize loader (with local image directory)
+	loader := lru_mahdi.NewImageLoader(5000, "")
+
+	// Load various image types
+	images := []string{
+		//"/var/cloud/upload/upload5/20190809_000407.jpg",
+		//"Screenshot_20240113_180718_Instagram.jpg",
+		//"Screenshot_20240120_020041_Instagram.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/18.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/17.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/25.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/26.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/27.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/28.jpg",
+		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/42.jpg",
+
+		//"https://mahdiali.s3.ir-thr-at1.arvanstorage.ir/%D9%86%D9%82%D8%B4%D9%87-%D8%AA%D8%A7%DB%8C%D9%85%D8%B1-%D8%B1%D8%A7%D9%87-%D9%BE%D9%84%D9%87-%D8%B3%D9%87-%D8%B3%DB%8C%D9%85.jpg?versionId=", // Network URL
+		//"https://mahdicpp.s3.ir-thr-at1.arvanstorage.ir/0f470b87c13e25bc4211683711e71e2a.jpg?versionId=",
+	}
+
+	ctx := context.Background()
+	for _, img := range images {
+		data, err := loader.LoadImage(ctx, img)
+		if err != nil {
+			log.Printf("Failed to load %s: %v", img, err)
+			continue
+		}
+		fmt.Printf("Loaded %s (%d kB)\n", img, len(data)/1024)
+	}
+
+	//Print metrics
+	//f, n, g, e, avg := loader.Metrics()
+	//fmt.Printf("\nLoader Metrics:\n")
+	//fmt.Printf("File loads: %d\n", f)
+	//fmt.Printf("Network loads: %d\n", n)
+	//fmt.Printf("Generated images: %d\n", g)
+	//fmt.Printf("Errors: %d\n", e)
+	//fmt.Printf("Avg load time: %s\n", avg)
+
+	//Get metrics
+	loadMetric := loader.Metrics()
+	fmt.Printf("CurrentCacheBytes: %s\n", formatBytes(loadMetric.CurrentCacheBytes))
 
 	// Load configuration
 	cfg, err := loadConfig()

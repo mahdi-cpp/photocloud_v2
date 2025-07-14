@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/lru_mahdi"
 	"log"
 	"mime/multipart"
 	"os"
@@ -37,22 +38,36 @@ type Stats struct {
 }
 
 type UserStorageManager struct {
-	mu              sync.RWMutex
-	storages        map[int]*UserStorage // Maps user IDs to their UserStorage
-	config          Config
-	userManager     *UserManager
-	imageRepository *ImageRepository
+	mu             sync.RWMutex
+	storages       map[int]*UserStorage // Maps user IDs to their UserStorage
+	config         Config
+	userManager    *UserManager
+	iconRepository *lru_mahdi.ImageRepository
+	imageLoader    *lru_mahdi.ImageLoader
+	ctx            context.Context
 }
 
 func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
 
 	// Handler the manager
 	manager := &UserStorageManager{
-		storages:        make(map[int]*UserStorage),
-		config:          cfg,
-		userManager:     NewUserManager("/media/mahdi/Cloud/apps/system/users.json"),
-		imageRepository: NewImageRepository(),
+		storages:    make(map[int]*UserStorage),
+		config:      cfg,
+		userManager: NewUserManager("/media/mahdi/Cloud/apps/system/users.json"),
+		ctx:         context.Background(),
 	}
+	// Initialize with proper paths
+	lru_mahdi.InitializePaths(
+		[]string{"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", "/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/thumbnails"},
+		"/var/cloud/icons")
+
+	var err error
+	manager.iconRepository, err = lru_mahdi.NewImageRepository(50000, 2000)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	manager.imageLoader = lru_mahdi.NewImageLoader(50000, "/media/mahdi/Cloud/apps/Photos")
 
 	// Ensure base directories exist
 	dirs := []string{cfg.AssetsDir, cfg.MetadataDir, cfg.ThumbnailsDir}
@@ -252,18 +267,22 @@ func (us *UserStorageManager) periodicMaintenance() {
 
 //----------------------------------------------------------------------------------------
 
-func (us *UserStorageManager) RepositorySearch(fileName string) (string, error) {
-	return us.imageRepository.SearchFile(fileName)
-}
-
-//func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, bool) {
-//	return us.imageRepository.GetIconCash(filename)
+//func (us *UserStorageManager) RepositorySearch(fileName string) (string, error) {
+//	return us.iconRepository.SearchFile(fileName)
 //}
 
-func (us *UserStorageManager) RepositoryGetImage(filename string) ([]byte, bool) {
-	return us.imageRepository.GetImage(filename)
+//func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, bool) {
+//	return us.iconRepository.GetIconCash(filename)
+//}
+
+func (us *UserStorageManager) RepositoryGetImage(filename string) ([]byte, error) {
+	return us.imageLoader.LoadImage(us.ctx, filename)
 }
 
-func (us *UserStorageManager) AddTinyImage(filepath string, filename string) {
-	us.imageRepository.AddTinyImage(filepath, filename)
+func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
+	return us.iconRepository.GetIcon(filename)
 }
+
+//func (us *UserStorageManager) AddTinyImage(filepath string, filename string) {
+//	us.iconRepository.AddTinyImage(filepath, filename)
+//}
