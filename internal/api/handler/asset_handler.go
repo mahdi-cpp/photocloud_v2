@@ -155,17 +155,53 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, "successful delete asset with id: "+strconv.Itoa(request.AssetID))
 }
 
+func (h *AssetHandler) Filters(c *gin.Context) {
+
+	var filters model.AssetSearchFilters
+	if err := c.ShouldBindJSON(&filters); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		fmt.Println("Invalid request")
+		return
+	}
+
+	fmt.Println("Filters userId: ", filters.UserID)
+
+	assets, total, err := h.userStorageManager.FilterAssets(c, filters)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	fmt.Println("Filters count: ", len(assets))
+
+	c.JSON(http.StatusOK, model.FilterResponse{
+		Results: assets,
+		Total:   total,
+		Limit:   filters.FetchLimit,
+		Offset:  filters.FetchOffset,
+	})
+}
+
 //----------------------------------------
 
 func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 
 	filename := c.Param("filename")
-	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki", filename)
+	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", filename)
 
 	fileSize, err := storage.GetFileSize(filepath2)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
 		return
+	}
+
+	filepathTiny := filepath.Join("mahdi_abdolmaleki/assets", filename)
+
+	imgData, err := h.userStorageManager.RepositoryGetOriginalImage(filepathTiny)
+	if err != nil {
+		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
+	} else {
+		c.Data(http.StatusOK, "image/jpeg", imgData)
 	}
 
 	//c.Header("Content-Type", "mage/jpeg")
@@ -178,8 +214,8 @@ func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 }
 
 func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
-	filename := c.Param("filename")
 
+	filename := c.Param("filename")
 	if strings.Contains(filename, "png") {
 		imgData, err := h.userStorageManager.RepositoryGetIcon(filename)
 		if err != nil {
@@ -192,7 +228,7 @@ func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
 
 	filepathTiny := filepath.Join("mahdi_abdolmaleki/thumbnails", filename)
 
-	imgData, err := h.userStorageManager.RepositoryGetImage(filepathTiny)
+	imgData, err := h.userStorageManager.RepositoryGetTinyImage(filepathTiny)
 	if err != nil {
 		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
@@ -202,7 +238,7 @@ func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
 
 func (h *AssetHandler) IconDownload(c *gin.Context) {
 	filename := c.Param("filename")
-	imgData, err := h.userStorageManager.RepositoryGetImage(filename)
+	imgData, err := h.userStorageManager.RepositoryGetTinyImage(filename)
 	if err != nil {
 		c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
 	}

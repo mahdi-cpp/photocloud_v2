@@ -38,7 +38,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 	}
 
 	albumManager := handler.userStorageManager.GetAlbumManager(c, 4)
-	album2, err := albumManager.Create("Camera ", "favourite", true)
+	album2, err := albumManager.Create(album.Name, album.AlbumType, album.IsCollection)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

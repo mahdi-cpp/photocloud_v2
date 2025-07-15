@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/lru_mahdi"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,13 +39,14 @@ type Stats struct {
 }
 
 type UserStorageManager struct {
-	mu             sync.RWMutex
-	storages       map[int]*UserStorage // Maps user IDs to their UserStorage
-	config         Config
-	userManager    *UserManager
-	iconRepository *lru_mahdi.ImageRepository
-	imageLoader    *lru_mahdi.ImageLoader
-	ctx            context.Context
+	mu                  sync.RWMutex
+	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
+	config              Config
+	userManager         *UserManager
+	originalImageLoader *image_loader.ImageLoader
+	tinyImageLoader     *image_loader.ImageLoader
+	iconLoader          *image_loader.ImageLoader
+	ctx                 context.Context
 }
 
 func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
@@ -56,28 +58,31 @@ func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
 		userManager: NewUserManager("/media/mahdi/Cloud/apps/system/users.json"),
 		ctx:         context.Background(),
 	}
-	// Initialize with proper paths
-	lru_mahdi.InitializePaths(
-		[]string{"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", "/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/thumbnails"},
-		"/var/cloud/icons")
 
-	var err error
-	manager.iconRepository, err = lru_mahdi.NewImageRepository(50000, 2000)
-	if err != nil {
-		log.Fatal(err)
-	}
+	manager.originalImageLoader = image_loader.NewImageLoader(50, "/media/mahdi/Cloud/apps/Photos", 5*time.Minute)
+	manager.tinyImageLoader = image_loader.NewImageLoader(30000, "/media/mahdi/Cloud/apps/Photos", 60*time.Minute)
+	manager.iconLoader = image_loader.NewImageLoader(1000, "/var/cloud/icons", 0)
 
-	manager.imageLoader = lru_mahdi.NewImageLoader(50000, "/media/mahdi/Cloud/apps/Photos")
-
-	// Ensure base directories exist
-	dirs := []string{cfg.AssetsDir, cfg.MetadataDir, cfg.ThumbnailsDir}
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
-		}
-	}
+	manager.loadAllIcons()
 
 	return manager, nil
+}
+
+func (us *UserStorageManager) loadAllIcons() {
+	us.iconLoader.GetLocalBasePath()
+
+	// Scan metadata directory
+	files, err := os.ReadDir(us.iconLoader.GetLocalBasePath())
+	if err != nil {
+		fmt.Println("failed to read metadata directory: %w", err)
+	}
+
+	var images []string
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".png") {
+			images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Name())
+		}
+	}
 }
 
 func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*UserStorage, error) {
@@ -267,22 +272,14 @@ func (us *UserStorageManager) periodicMaintenance() {
 
 //----------------------------------------------------------------------------------------
 
-//func (us *UserStorageManager) RepositorySearch(fileName string) (string, error) {
-//	return us.iconRepository.SearchFile(fileName)
-//}
+func (us *UserStorageManager) RepositoryGetOriginalImage(filename string) ([]byte, error) {
+	return us.originalImageLoader.LoadImage(us.ctx, filename)
+}
 
-//func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, bool) {
-//	return us.iconRepository.GetIconCash(filename)
-//}
-
-func (us *UserStorageManager) RepositoryGetImage(filename string) ([]byte, error) {
-	return us.imageLoader.LoadImage(us.ctx, filename)
+func (us *UserStorageManager) RepositoryGetTinyImage(filename string) ([]byte, error) {
+	return us.tinyImageLoader.LoadImage(us.ctx, filename)
 }
 
 func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
-	return us.iconRepository.GetIcon(filename)
+	return us.iconLoader.LoadImage(us.ctx, filename)
 }
-
-//func (us *UserStorageManager) AddTinyImage(filepath string, filename string) {
-//	us.iconRepository.AddTinyImage(filepath, filename)
-//}

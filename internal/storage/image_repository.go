@@ -36,7 +36,7 @@ type ImageRepositoryV1 struct {
 //}
 
 //var tinyRepository = ImageRepositoryV1{memory: make(map[string][]byte)}
-//var iconRepository = ImageRepositoryV1{memory: make(map[string][]byte)}
+//var iconLoader = ImageRepositoryV1{memory: make(map[string][]byte)}
 
 //--------------------------------------------
 
@@ -57,9 +57,9 @@ func (r *ImageRepositoryV1) GetImage(filename string) ([]byte, bool) {
 }
 
 //func (r *ImageRepositoryV1) GetIconCash(filename string) ([]byte, bool) {
-//	iconRepository.RLock()
-//	imgData, exists := iconRepository.cache[filename]
-//	iconRepository.RUnlock()
+//	iconLoader.RLock()
+//	imgData, exists := iconLoader.cache[filename]
+//	iconLoader.RUnlock()
 //	return imgData, exists
 //}
 

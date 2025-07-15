@@ -341,7 +341,7 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 	us.mu.RLock()
 	defer us.mu.RUnlock()
 
-	//startTime := time.Now()
+	startTime := time.Now()
 
 	// Step 1: Build criteria from filters
 	criteria := assetBuildCriteria(filters)
@@ -361,50 +361,30 @@ func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.
 	assetSortAssets(matches, filters.SortBy, filters.SortOrder)
 
 	// Step 3: Apply pagination
-	//start := filters.FetchOffset
-	//if start < 0 {
-	//	start = 0
-	//}
-	//if start > len(matches) {
-	//	start = len(matches)
-	//}
-	//
-	//end := start + filters.FetchLimit
-	//if end > len(matches) || filters.FetchLimit <= 0 {
-	//	end = len(matches)
-	//}
-	//
-	//paginated := matches[start:end]
-
-	// Log performance
-	//duration := time.Since(startTime)
-	//log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
-
-	fmt.Println("matches: ", len(matches))
-
-	return matches, totalCount, nil
-}
-
-// ========================
-// Internal Implementation
-// ========================
-
-type IndexedItemV2[T any] struct {
-	Index int
-	Value T
-}
-
-type assetSearchCriteria[T any] func(T) bool
-
-func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedItemV2[T] {
-	var results []IndexedItemV2[T]
-
-	for i, item := range slice {
-		if criteria(item) {
-			results = append(results, IndexedItemV2[T]{Index: i, Value: item})
-		}
+	start := filters.FetchOffset
+	if start < 0 {
+		start = 0
 	}
-	return results
+	if start > len(matches) {
+		start = len(matches)
+	}
+
+	end := start + filters.FetchLimit
+	if end > len(matches) || filters.FetchLimit <= 0 {
+		end = len(matches)
+	}
+
+	paginated := matches[start:end]
+
+	//Log performance
+	duration := time.Since(startTime)
+	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
+
+	fmt.Println("matches[start:end]: ", start, end)
+	fmt.Println("matches: ", filters.FetchOffset)
+	fmt.Println("paginated: ", len(paginated))
+
+	return paginated, totalCount, nil
 }
 
 func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsset] {
@@ -435,7 +415,6 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 		if filters.CameraMake != "" && asset.CameraMake != filters.CameraMake {
 			return false
 		}
-
 		if filters.CameraModel != "" && asset.CameraModel != filters.CameraModel {
 			return false
 		}
@@ -456,6 +435,10 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 			return false
 		}
 		if filters.IsHidden != nil && asset.IsHidden != *filters.IsHidden {
+			return false
+		}
+
+		if filters.HideScreenshot != nil && *filters.HideScreenshot == false && asset.IsScreenshot == true {
 			return false
 		}
 
@@ -520,6 +503,23 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 	}
 }
 
+type IndexedItemV2[T any] struct {
+	Index int
+	Value T
+}
+
+type assetSearchCriteria[T any] func(T) bool
+
+func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedItemV2[T] {
+	var results []IndexedItemV2[T]
+
+	for i, item := range slice {
+		if criteria(item) {
+			results = append(results, IndexedItemV2[T]{Index: i, Value: item})
+		}
+	}
+	return results
+}
 func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 
 	if sortBy == "" {

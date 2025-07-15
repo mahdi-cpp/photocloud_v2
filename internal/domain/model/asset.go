@@ -61,10 +61,13 @@ type AssetSearchFilters struct {
 	StartDate *time.Time
 	EndDate   *time.Time
 
-	IsFavorite   *bool
-	IsScreenshot *bool
-	IsHidden     *bool
-	IsLandscape  *bool
+	IsFavorite    *bool
+	IsScreenshot  *bool
+	IsHidden      *bool
+	IsLandscape   *bool
+	NotInOneAlbum *bool
+
+	HideScreenshot *bool `json:"hideScreenshot"`
 
 	Albums  []int
 	Trips   []int
@@ -77,8 +80,8 @@ type AssetSearchFilters struct {
 	SortBy    string `json:"sortBy"`    // Field to sort by (e.g., "creationDate", "filename")
 	SortOrder string `json:"sortOrder"` // "asc" or "desc"
 
-	FetchOffset int
-	FetchLimit  int
+	FetchOffset int `json:"fetchOffset"`
+	FetchLimit  int `json:"fetchLimit"`
 }
 
 type AssetUpdate struct {
@@ -108,4 +111,11 @@ type AssetUpdate struct {
 type AssetDelete struct {
 	UserID  int `json:"userID"`
 	AssetID int `json:"assetID"`
+}
+
+type FilterResponse struct {
+	Results []*PHAsset `json:"results"`
+	Total   int        `json:"total"`
+	Limit   int        `json:"limit"`
+	Offset  int        `json:"offset"`
 }

@@ -5,37 +5,36 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/config"
+	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/api/handler"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/lru_mahdi"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
-
-// formatBytes converts bytes to human-readable string
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
-}
 
 func main() {
 
 	// Initialize loader (with local image directory)
-	loader := lru_mahdi.NewImageLoader(5000, "")
+	loader := image_loader.NewImageLoader(5000, "", 10*time.Minute)
 
-	// Load various image types
+	//// Scan metadata directory
+	//files, err := os.ReadDir("/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets")
+	//if err != nil {
+	//	fmt.Println("failed to read metadata directory: %w", err)
+	//}
+	//
+	//var images []string
+	//for _, file := range files {
+	//	fmt.Println(file.Name())
+	//	images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Name())
+	//}
+	//
+	//// Load various image types
 	images := []string{
 		//"/var/cloud/upload/upload5/20190809_000407.jpg",
 		//"Screenshot_20240113_180718_Instagram.jpg",
@@ -73,7 +72,7 @@ func main() {
 
 	//Get metrics
 	loadMetric := loader.Metrics()
-	fmt.Printf("CurrentCacheBytes: %s\n", formatBytes(loadMetric.CurrentCacheBytes))
+	fmt.Printf("CurrentCacheBytes: %s\n", image_loader.FormatBytes(loadMetric.CurrentCacheBytes))
 
 	// Load configuration
 	cfg, err := loadConfig()
@@ -182,6 +181,7 @@ func createRouter(
 		api.GET("/assets/:id", assetHandler.Get)
 		api.POST("/assets/update", assetHandler.Update)
 		api.POST("/assets/delete", assetHandler.Delete)
+		api.POST("/assets/filters", assetHandler.Filters)
 		api.GET("/assets/download/:filename", assetHandler.OriginalDownload)
 		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
 		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
