@@ -123,10 +123,10 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		return nil, fmt.Errorf("failed to initialize index: %w", err)
 	}
 
-	assets2, err := ps.metadata.LoadUserAllMetadata()
-	if err != nil {
-	}
-	mahdiAssets = assets2
+	//assets2, err := ps.metadata.LoadUserAllMetadata()
+	//if err != nil {
+	//}
+	//mahdiAssets = assets2
 
 	// Start background maintenance
 	go ps.periodicMaintenance()
@@ -294,7 +294,7 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 				albumSet[id] = true
 			}
 
-			// Add new albums (avoid duplicates)
+			// Add new items (avoid duplicates)
 			for _, id := range update.AddAlbums {
 				if !albumSet[id] {
 					asset.Albums = append(asset.Albums, id)
@@ -302,7 +302,7 @@ func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (s
 				}
 			}
 
-			// Remove specified albums
+			// Remove specified items
 			if len(update.RemoveAlbums) > 0 {
 				removeSet := make(map[int]bool)
 				for _, id := range update.RemoveAlbums {
@@ -488,7 +488,7 @@ func (ps *PhotoStorage) RebuildIndex() error {
 }
 
 // SearchAssets searches assets based on criteria
-func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+func (ps *PhotoStorage) SearchAssets(filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
 
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
@@ -568,7 +568,7 @@ func (ps *PhotoStorage) SearchAssets(filters model.AssetSearchFilters) ([]*model
 }
 
 // FilterAssets searches assets based on criteria
-func (ps *PhotoStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+func (ps *PhotoStorage) FilterAssets(filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
 
@@ -643,7 +643,7 @@ func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
 	return results
 }
 
-func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsset] {
+func buildCriteria(filters model.PHFetchOptions) searchCriteria[model.PHAsset] {
 
 	return func(asset model.PHAsset) bool {
 
@@ -712,7 +712,7 @@ func buildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsse
 			}
 		}
 
-		// Album filtering (if albums are specified)
+		// Album filtering (if items are specified)
 		//if len(filters.AlbumCollection) > 0 {
 		//	found := false
 		//	for _, albumID := range filters.AlbumCollection {

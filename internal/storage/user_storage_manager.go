@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -90,12 +89,15 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	defer us.mu.Unlock()
 
 	if userID <= 0 {
-		return nil, fmt.Errorf("user id is Invalid !!??? ")
+		return nil, fmt.Errorf("user id is Invalid")
 	}
 
-	var user = us.userManager.GetById(userID)
+	var user, exists = us.userManager.GetById(userID)
+	if !exists {
+		return nil, fmt.Errorf("user not found")
+	}
 
-	// Check if storage already exists for this user
+	// Check if userStorage already exists for this user
 	if storage, exists := us.storages[userID]; exists {
 		return storage, nil
 	}
@@ -125,8 +127,8 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	userConfig.MetadataDir = userMetadataDir
 	userConfig.ThumbnailsDir = userThumbnailsDir
 
-	// Handler new storage for this user
-	storage := &UserStorage{
+	// Handler new userStorage for this user
+	userStorage := &UserStorage{
 		config:            userConfig,
 		user:              user,
 		metadata:          NewMetadataManager(userMetadataDir),
@@ -135,22 +137,24 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 		cancelMaintenance: cancel,
 	}
 
-	storage.pinnedManager, _ = NewPinnedManager(pinnedCollectionFile)
-	storage.albumManager, _ = NewAlbumManager(albumFile)
-	storage.tripManager, _ = NewTripManager(tripFile)
-	storage.personManager, _ = NewPersonManager(personFile)
+	userStorage.pinnedManager, _ = NewPinnedManager(pinnedCollectionFile)
+	userStorage.albumManager, _ = NewAlbumManager(userStorage, albumFile)
+	userStorage.tripManager, _ = NewTripManager(tripFile)
+	userStorage.personManager, _ = NewPersonManager(personFile)
 
 	// Load user assets
 	var err error
-	storage.assets, err = storage.metadata.LoadUserAllMetadata()
+	userStorage.assets, err = userStorage.metadata.LoadUserAllMetadata()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	// Store the new storage
-	us.storages[userID] = storage
+	userStorage.prepareAlbums()
 
-	return storage, nil
+	// Store the new userStorage
+	us.storages[userID] = userStorage
+
+	return userStorage, nil
 }
 
 func (us *UserStorageManager) RemoveStorageForUser(userID int) {
@@ -165,75 +169,84 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 	}
 }
 
-func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) *PinnedManager {
+func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*PinnedManager, error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return userStorage.pinnedManager
+	return userStorage.pinnedManager, nil
 }
 
-func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) *AlbumManager {
+func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*AlbumManager, error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return userStorage.albumManager
+	return userStorage.albumManager, nil
 }
 
-func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) *TripManager {
+func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*TripManager, error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return userStorage.tripManager
+	return userStorage.tripManager, err
 }
 
-func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) *PersonManager {
+func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*PersonManager, error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return userStorage.personManager
+	return userStorage.personManager, nil
 }
 
 func (us *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
 
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return userStorage.UploadAsset(userID, file, header)
 }
 
-func (us *UserStorageManager) FilterAssets(c *gin.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+func (us *UserStorageManager) FetchAssets(c *gin.Context, with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
 
-	userStorage, err := us.GetStorageForUser(c, filters.UserID)
+	userStorage, err := us.GetStorageForUser(c, with.UserID)
 	if err != nil {
-		log.Fatal(err)
+		return nil, 0, err
 	}
 
-	return userStorage.FilterAssets(filters)
+	return userStorage.FetchAssets(with)
 }
 
 func (us *UserStorageManager) UpdateAsset(c *gin.Context, assetIds []int, update model.AssetUpdate) (string, error) {
 	userStorage, err := us.GetStorageForUser(c, update.UserID)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
 	return userStorage.UpdateAsset(assetIds, update)
 }
 
-func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (*model.PHAsset, error) {
+func (us *UserStorageManager) Prepare(c *gin.Context, update model.AssetUpdate) {
+	userStorage, err := us.GetStorageForUser(c, update.UserID)
+	if err != nil {
+		return
+	}
+
+	userStorage.PrepareAlbums()
+}
+
+func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (*model.PHAsset, bool) {
 	userStorage, err := us.GetStorageForUser(c, userId)
 	if err != nil {
-		log.Fatal(err)
+		return nil, false
 	}
 
 	return userStorage.GetAsset(assetId)
@@ -242,7 +255,7 @@ func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) 
 func (us *UserStorageManager) Delete(c *gin.Context, userId int, assetId int) error {
 	userStorage, err := us.GetStorageForUser(c, userId)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	return userStorage.DeleteAsset(assetId)

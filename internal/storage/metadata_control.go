@@ -9,60 +9,54 @@ import (
 // MetadataControl manages JSON file operations for any type T
 type MetadataControl[T any] struct {
 	filePath string
-	mutex    sync.RWMutex // Protects concurrent access
+	mutex    sync.RWMutex
 }
 
-// NewMetadataControl creates a new metadata for the specified JSON file
+// NewMetadataControl creates a new metadata controller
 func NewMetadataControl[T any](filePath string) *MetadataControl[T] {
-	return &MetadataControl[T]{filePath: filePath}
+	return &MetadataControl[T]{
+		filePath: filePath,
+	}
 }
 
-// Read retrieves the current data from the JSON file
-func (m *MetadataControl[T]) Read() (T, error) {
+// Read retrieves the current data (returns pointer to allow modification)
+func (m *MetadataControl[T]) Read() (*T, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	var data T
+	data := new(T)
 	file, err := os.ReadFile(m.filePath)
 	if err != nil {
-		// Return empty data if file doesn't exist
 		if os.IsNotExist(err) {
 			return data, nil
 		}
-		return data, err
+		return nil, err
 	}
 
 	if len(file) == 0 {
 		return data, nil
 	}
 
-	if err := json.Unmarshal(file, &data); err != nil {
-		return data, err
+	if err := json.Unmarshal(file, data); err != nil {
+		return nil, err
 	}
 
 	return data, nil
 }
 
-// Update modifies the data using a callback function
+// Update modifies the data using a callback function (now accepts pointer)
 func (m *MetadataControl[T]) Update(updateFunc func(*T) error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	// Read current data
-	var data T
-	file, err := os.ReadFile(m.filePath)
-	if err != nil && !os.IsNotExist(err) {
+	// Read current data into a pointer
+	data, err := m.readData()
+	if err != nil {
 		return err
 	}
 
-	if len(file) > 0 {
-		if err := json.Unmarshal(file, &data); err != nil {
-			return err
-		}
-	}
-
-	// Apply updates
-	if err := updateFunc(&data); err != nil {
+	// Apply updates to the pointer
+	if err := updateFunc(data); err != nil {
 		return err
 	}
 
@@ -70,26 +64,43 @@ func (m *MetadataControl[T]) Update(updateFunc func(*T) error) error {
 	return m.writeData(data)
 }
 
-// Write replaces the entire file contents
-func (m *MetadataControl[T]) Write(data T) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	return m.writeData(data)
+// readData helper function
+func (m *MetadataControl[T]) readData() (*T, error) {
+	data := new(T)
+	file, err := os.ReadFile(m.filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return data, nil
+		}
+		return nil, err
+	}
+
+	if len(file) > 0 {
+		if err := json.Unmarshal(file, data); err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
 }
 
-// writeData handles the actual file writing
-func (m *MetadataControl[T]) writeData(data T) error {
+// writeData handles the actual file writing (accepts pointer)
+func (m *MetadataControl[T]) writeData(data *T) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	// Write to temp file first
 	tempFile := m.filePath + ".tmp"
 	if err := os.WriteFile(tempFile, jsonData, 0644); err != nil {
 		return err
 	}
 
-	// Atomic rename
 	return os.Rename(tempFile, m.filePath)
+}
+
+// Write replaces the entire file contents (accepts pointer)
+func (m *MetadataControl[T]) Write(data *T) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.writeData(data)
 }

@@ -71,6 +71,8 @@ func (h *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
+	h.userStorageManager.Prepare(c, update)
+
 	// Log performance
 	duration := time.Since(startTime)
 	log.Printf("Update: assets count: %d,  (in %v)", len(update.AssetIds), duration)
@@ -86,8 +88,8 @@ func (h *AssetHandler) Get(c *gin.Context) {
 		return
 	}
 
-	asset, err := h.userStorageManager.GetAsset(c, 1, id)
-	if err != nil {
+	asset, exists := h.userStorageManager.GetAsset(c, 4, id)
+	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
 		return
 	}
@@ -113,7 +115,7 @@ func (h *AssetHandler) Search(c *gin.Context) {
 		}
 	}
 
-	filters := model.AssetSearchFilters{
+	filters := model.PHFetchOptions{
 		UserID:    userID,
 		Query:     query,
 		MediaType: model.MediaType(mediaType),
@@ -157,7 +159,7 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 
 func (h *AssetHandler) Filters(c *gin.Context) {
 
-	var filters model.AssetSearchFilters
+	var filters model.PHFetchOptions
 	if err := c.ShouldBindJSON(&filters); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -166,20 +168,22 @@ func (h *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters userId: ", filters.UserID)
 
-	assets, total, err := h.userStorageManager.FilterAssets(c, filters)
+	items, total, err := h.userStorageManager.FetchAssets(c, filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
 
-	fmt.Println("Filters count: ", len(assets))
+	fmt.Println("Filters count: ", len(items))
 
-	c.JSON(http.StatusOK, model.FilterResponse{
-		Results: assets,
-		Total:   total,
-		Limit:   filters.FetchLimit,
-		Offset:  filters.FetchOffset,
-	})
+	result := model.PHFetchResult[*model.PHAsset]{
+		Items:  items,
+		Total:  total,
+		Limit:  100,
+		Offset: 100,
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 //----------------------------------------

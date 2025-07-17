@@ -26,7 +26,7 @@ func NewTripManager(path string) (*TripManager, error) {
 
 	trips, err := manager.load()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+		return nil, fmt.Errorf("failed to initialize Album: %w", err)
 	}
 
 	for _, trip := range trips {

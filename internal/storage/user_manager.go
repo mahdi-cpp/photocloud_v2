@@ -32,8 +32,9 @@ func NewUserManager(dir string) *UserManager {
 	return manager
 }
 
-func (manager *UserManager) GetById(id int) model.User {
-	return manager.users[id]
+func (manager *UserManager) GetById(id int) (model.User, bool) {
+	user, exists := manager.users[id]
+	return user, exists
 }
 
 func (manager *UserManager) GetUsername(id int) string {

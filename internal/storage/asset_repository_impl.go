@@ -95,7 +95,7 @@ func (r *AssetRepositoryImpl) GetRecentAssets(ctx context.Context, userID int, d
 	end := time.Now()
 	start := end.AddDate(0, 0, -days)
 
-	assets, _, err := r.storage.SearchAssets(model.AssetSearchFilters{
+	assets, _, err := r.storage.SearchAssets(model.PHFetchOptions{
 		UserID:    userID,
 		StartDate: &start,
 		EndDate:   &end,
@@ -107,11 +107,11 @@ func (r *AssetRepositoryImpl) CountUserAssets(ctx context.Context, userID int) (
 	return r.storage.CountUserAssets(userID), nil
 }
 
-func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
 	return r.storage.SearchAssets(filters)
 }
 
-func (r *AssetRepositoryImpl) FilterAssets(ctx context.Context, filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
+func (r *AssetRepositoryImpl) FilterAssets(ctx context.Context, filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
 	return r.storage.FilterAssets(filters)
 }
 

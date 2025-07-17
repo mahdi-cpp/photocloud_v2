@@ -23,7 +23,7 @@ func NewPinnedManager(path string) (*PinnedManager, error) {
 
 	pins, err := manager.load()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+		return nil, fmt.Errorf("failed to initialize Album: %w", err)
 	}
 
 	for _, pinned := range pins {

@@ -5,43 +5,49 @@ import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/registery"
+	"sort"
 	"strconv"
 	"time"
 )
 
 type AlbumManager struct {
-	registry *registery.Registry[model.Album]
-	metadata *MetadataControl[model.AlbumCollection]
+	parent     *UserStorage
+	metadata   *MetadataControl[model.PHCollectionList[*model.Album]]
+	items      *registery.Registry[model.Album]
+	itemAssets map[int][]*model.PHAsset
 }
 
-func NewAlbumManager(path string) (*AlbumManager, error) {
+func NewAlbumManager(parent *UserStorage, path string) (*AlbumManager, error) {
 
 	manager := &AlbumManager{
-		registry: registery.NewRegistry[model.Album](),
-		metadata: NewMetadataControl[model.AlbumCollection](path),
+		parent:     parent,
+		items:      registery.NewRegistry[model.Album](),
+		metadata:   NewMetadataControl[model.PHCollectionList[*model.Album]](path),
+		itemAssets: make(map[int][]*model.PHAsset),
 	}
 
 	albums, err := manager.load()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+		return nil, fmt.Errorf("failed to initialize Album: %w", err)
 	}
 
 	for _, album := range albums {
-		manager.registry.Register(strconv.Itoa(album.ID), album)
+		fmt.Println(album.Name)
+		manager.items.Register(strconv.Itoa(album.ID), album)
 	}
 
 	return manager, nil
 }
 
 func (manager *AlbumManager) load() ([]model.Album, error) {
-	albumCollection, err := manager.metadata.Read()
+	collectionList, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}
 
 	var result []model.Album
-	for _, album := range albumCollection.Albums {
-		result = append(result, album)
+	for _, collection := range collectionList.Collections {
+		result = append(result, *collection.Item)
 	}
 
 	return result, nil
@@ -50,17 +56,16 @@ func (manager *AlbumManager) load() ([]model.Album, error) {
 func (manager *AlbumManager) Create(name string, albumType string, isCollection bool) (*model.Album, error) {
 	var newAlbum *model.Album
 
-	err := manager.metadata.Update(func(albums *model.AlbumCollection) error {
+	err := manager.metadata.Update(func(collectionList *model.PHCollectionList[*model.Album]) error {
 
 		// Generate ID
 		maxID := 0
-		for _, album := range albums.Albums {
-			if album.ID > maxID {
-				maxID = album.ID
+		for _, collection := range collectionList.Collections {
+			if collection.Item.ID > maxID {
+				maxID = collection.Item.ID
 			}
 		}
 
-		// Handler new album
 		newAlbum = &model.Album{
 			ID:               maxID + 1,
 			Name:             name,
@@ -71,85 +76,112 @@ func (manager *AlbumManager) Create(name string, albumType string, isCollection 
 			ModificationDate: time.Now(),
 		}
 
-		manager.registry.Register(strconv.Itoa(newAlbum.ID), *newAlbum)
+		// Create as POINTER to PHCollection
+		//result := &model.PHCollection[model.Album]{
+		//	Item:   *newAlbum,
+		//	Assets: nil,
+		//}
+
+		manager.items.Register(strconv.Itoa(newAlbum.ID), *newAlbum)
+
+		// Append pointer to the collection
+		//collectionList.Collections = append(collectionList.Collections, result)
 
 		// Add to collection
-		albums.Albums = append(albums.Albums, *newAlbum)
+		collectionList.Collections = append(collectionList.Collections,
+			&model.PHCollection[*model.Album]{
+				Item:   newAlbum,
+				Assets: nil,
+			})
+
 		return nil
 	})
+
+	if err == nil {
+		manager.parent.prepareAlbums()
+	}
 
 	return newAlbum, err
 }
 
+func (manager *AlbumManager) GetAlbumAssets(albumID int) ([]*model.PHAsset, error) {
+	return manager.itemAssets[albumID], nil
+}
+
 func (manager *AlbumManager) Update(id int, name string) (*model.Album, error) {
+
 	var updatedAlbum *model.Album
 
-	err := manager.metadata.Update(func(albums *model.AlbumCollection) error {
-		for i, album := range albums.Albums {
-			if album.ID == id {
+	err := manager.metadata.Update(func(collectionList *model.PHCollectionList[*model.Album]) error {
+		for i, collection := range collectionList.Collections {
+			if collection.Item.ID == id {
 				// Update fields
-				albums.Albums[i].Name = name
-				//albums.Albums[i].AlbumType = albumType
-				//albums.Albums[i].IsHidden = isHidden
-				albums.Albums[i].ModificationDate = time.Now()
+				collectionList.Collections[i].Item.Name = name
+				//collectionList.Album[i].AlbumType = albumType
+				//collectionList.Album[i].IsHidden = isHidden
+				collectionList.Collections[i].Item.ModificationDate = time.Now()
 
-				updatedAlbum = &albums.Albums[i]
-				manager.registry.Update(getKey(updatedAlbum.ID), *updatedAlbum)
+				updatedAlbum = collectionList.Collections[i].Item
+				manager.items.Update(getKey(updatedAlbum.ID), *updatedAlbum)
 				return nil
 			}
 		}
-		return errors.New("album not found")
+		return errors.New("collection not found")
 	})
 
 	return updatedAlbum, err
 }
 
 func (manager *AlbumManager) Delete(id int) error {
-	return manager.metadata.Update(func(albums *model.AlbumCollection) error {
-		for i, album := range albums.Albums {
-			if album.ID == id {
-				// Remove album from slice
-				albums.Albums = append(albums.Albums[:i], albums.Albums[i+1:]...)
-				manager.registry.Delete(getKey(album.ID))
+	return manager.metadata.Update(func(collectionList *model.PHCollectionList[*model.Album]) error {
+		for i, collection := range collectionList.Collections {
+			if collection.Item.ID == id {
+				// Remove collection from slice
+				collectionList.Collections = append(collectionList.Collections[:i], collectionList.Collections[i+1:]...)
+				manager.items.Delete(getKey(collection.Item.ID))
 				return nil
 			}
 		}
-		return errors.New("album not found")
+		return errors.New("collection not found")
 	})
 }
 
 func (manager *AlbumManager) Get(id int) (*model.Album, error) {
-	album, err := manager.registry.Get(getKey(id))
+	album, err := manager.items.Get(getKey(id))
 	if err != nil {
 		return nil, errors.New("album not found")
 	}
 	return &album, nil
 }
 
-func (manager *AlbumManager) GetList(includeHidden bool) ([]model.Album, error) {
+func (manager *AlbumManager) GetList(includeHidden bool) ([]*model.Album, error) {
 
-	albums := manager.registry.GetAllValues()
-	var result []model.Album
+	albums := manager.items.GetAllValues()
+	var result []*model.Album
 	for _, album := range albums {
 		if !album.IsHidden || includeHidden {
-			result = append(result, album)
+			result = append(result, &album)
 		}
 	}
-
+	SortAlbums(result, "creationDate", "asc")
 	return result, nil
+}
+
+func (manager *AlbumManager) GetAlbumList() ([]model.Album, error) {
+	return manager.items.GetAllValues(), nil
 }
 
 func (manager *AlbumManager) GetByType(albumType string) ([]model.Album, error) {
 
-	albums, err := manager.metadata.Read()
+	collectionList, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
 	}
 
 	var result []model.Album
-	for _, album := range albums.Albums {
-		if album.AlbumType != "" && album.AlbumType == albumType {
-			result = append(result, album)
+	for _, collection := range collectionList.Collections {
+		if collection.Item.AlbumType != "" && collection.Item.AlbumType == albumType {
+			result = append(result, *collection.Item)
 		}
 	}
 	return result, nil
@@ -157,4 +189,37 @@ func (manager *AlbumManager) GetByType(albumType string) ([]model.Album, error) 
 
 func getKey(id int) string {
 	return strconv.Itoa(id)
+}
+
+func SortAlbums(assets []*model.Album, sortBy, sortOrder string) {
+
+	if sortBy == "" {
+		return // No sorting requested
+	}
+
+	sort.Slice(assets, func(i, j int) bool {
+		a := assets[i]
+		b := assets[j]
+
+		switch sortBy {
+		case "id":
+			if sortOrder == "asc" {
+				return a.ID < b.ID
+			}
+			return a.ID > b.ID
+		case "creationDate":
+			if sortOrder == "asc" {
+				return a.CreationDate.Before(b.CreationDate)
+			}
+			return a.CreationDate.After(b.CreationDate)
+		case "modificationDate":
+			if sortOrder == "asc" {
+				return a.ModificationDate.Before(b.ModificationDate)
+			}
+			return a.ModificationDate.After(b.ModificationDate)
+
+		default:
+			return false // No sorting for unknown fields
+		}
+	})
 }

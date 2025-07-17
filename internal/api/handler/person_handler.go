@@ -25,7 +25,12 @@ func (handler *PersonHandler) Create(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetPersonManager(c, 4)
+	manager, err := handler.userStorageManager.GetPersonManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	data, err := manager.Create(person.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -42,7 +47,12 @@ func (handler *PersonHandler) GetList(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UserID: " + strconv.Itoa(userID)})
 	}
 
-	manager := handler.userStorageManager.GetPersonManager(c, userID)
+	manager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	data, err := manager.GetList(true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -62,7 +72,12 @@ func (handler *PersonHandler) Update(c *gin.Context) {
 
 	fmt.Println("Album Update: ", album.ID)
 
-	manager := handler.userStorageManager.GetPersonManager(c, album.UserID)
+	manager, err := handler.userStorageManager.GetPersonManager(c, album.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	album2, err := manager.Update(album.ID, album.Name, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -80,8 +95,13 @@ func (handler *PersonHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetAlbumManager(c, 4)
-	err := manager.Delete(album.ID)
+	manager, err := handler.userStorageManager.GetPersonManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	err = manager.Delete(album.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

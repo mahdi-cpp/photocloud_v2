@@ -23,7 +23,7 @@ func NewPersonManager(path string) (*PersonManager, error) {
 
 	albums, err := manager.load()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize Albums: %w", err)
+		return nil, fmt.Errorf("failed to initialize Album: %w", err)
 	}
 
 	for _, album := range albums {

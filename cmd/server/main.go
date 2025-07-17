@@ -97,6 +97,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	collectionHandler := handler.NewCollectionHandler(userStorageManager)
+
 	// Handler handlers
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
@@ -108,7 +110,7 @@ func main() {
 	personHandler := handler.NewPersonHandler(userStorageManager)
 
 	// Handler Gin router
-	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler)
+	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler, collectionHandler)
 
 	// Start server
 	startServer(cfg, router)
@@ -162,6 +164,7 @@ func createRouter(
 	personHandler *handler.PersonHandler,
 	searchHandler *handler.SearchHandler,
 	pinnedHandler *handler.PinnedHandler,
+	collectionHandler *handler.CollectionHandler,
 ) *gin.Engine {
 	// Set Gin mode
 	gin.SetMode(cfg.Server.Mode)
@@ -175,6 +178,9 @@ func createRouter(
 		// Search routes
 		api.GET("/search", searchHandler.Search)
 		api.POST("/search/filters", searchHandler.Filters)
+
+		api.POST("/collection/collection", collectionHandler.GetCollection)
+		api.POST("/collection/collectionList", collectionHandler.GetCollectionList)
 
 		// Asset routes
 		api.POST("/assets", assetHandler.Upload)
@@ -195,6 +201,7 @@ func createRouter(
 		api.POST("/album/update", albumHandler.Update)
 		api.POST("/album/delete", albumHandler.Delete)
 		api.GET("/album/getList", albumHandler.GetList)
+		api.GET("/album/getListV2", albumHandler.GetListV2)
 
 		api.POST("/trip/create", tripHandler.Create)
 		api.POST("/trip/update", tripHandler.Update)

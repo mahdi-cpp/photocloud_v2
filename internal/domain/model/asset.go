@@ -7,6 +7,7 @@ import (
 const (
 	ImageType MediaType = "image"
 	VideoType MediaType = "video"
+	SongType  MediaType = "song"
 )
 
 type PHAsset struct {
@@ -47,8 +48,7 @@ type PHAsset struct {
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
-// AssetSearchFilters defines search parameters
-type AssetSearchFilters struct {
+type PHFetchOptions struct {
 	UserID      int `json:"userID"`
 	Query       string
 	MediaType   MediaType
@@ -100,12 +100,12 @@ type AssetUpdate struct {
 	RemoveAlbums []int  `json:"removeAlbums,omitempty"` // Albums to remove
 
 	Trips       *[]int `json:"trips,omitempty"`       // Full trip replacement
-	AddTrips    []int  `json:"AddTrips,omitempty"`    // Trips to add
-	RemoveTrips []int  `json:"RemoveTrips,omitempty"` // Trips to remove
+	AddTrips    []int  `json:"addTrips,omitempty"`    // Trips to add
+	RemoveTrips []int  `json:"removeTrips,omitempty"` // Trips to remove
 
 	Persons       *[]int `json:"persons,omitempty"`       // Full Person replacement
-	AddPersons    []int  `json:"AddPersons,omitempty"`    // Persons to add
-	RemovePersons []int  `json:"RemovePersons,omitempty"` // Persons to remove
+	AddPersons    []int  `json:"addPersons,omitempty"`    // Persons to add
+	RemovePersons []int  `json:"removePersons,omitempty"` // Persons to remove
 }
 
 type AssetDelete struct {
@@ -113,9 +113,32 @@ type AssetDelete struct {
 	AssetID int `json:"assetID"`
 }
 
-type FilterResponse struct {
-	Results []*PHAsset `json:"results"`
-	Total   int        `json:"total"`
-	Limit   int        `json:"limit"`
-	Offset  int        `json:"offset"`
+//type PHFetchResult struct {
+//	Item  []*PHAsset `json:"items"`
+//	Total  int        `json:"total"`
+//	Limit  int        `json:"limit"`
+//	Offset int        `json:"offset"`
+//}
+
+// https://chat.deepseek.com/a/chat/s/9b010f32-b23d-4f9b-ae0c-31a9b2c9408c
+
+type PHFetchResult[T any] struct {
+	Items  []T `json:"items"`
+	Total  int `json:"total"`
+	Limit  int `json:"limit"`
+	Offset int `json:"offset"`
 }
+
+//func NewPHFetchResult[T any](
+//	items []T,
+//	total int,
+//	limit int,
+//	offset int,
+//) *PHFetchResult[T] {
+//	return &PHFetchResult[T]{
+//		Item:  items,
+//		Total:  total,
+//		Limit:  limit,
+//		Offset: offset,
+//	}
+//}

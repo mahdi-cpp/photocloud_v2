@@ -21,7 +21,7 @@ type UserStorage struct {
 	config            Config
 	mu                sync.RWMutex // Protects all indexes and maps
 	user              model.User
-	assets            []model.PHAsset
+	assets            map[int]*model.PHAsset
 	albumManager      *AlbumManager
 	tripManager       *TripManager
 	personManager     *PersonManager
@@ -100,25 +100,25 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 	return asset, nil
 }
 
-func (us *UserStorage) GetAsset(assetId int) (*model.PHAsset, error) {
+func (us *UserStorage) GetAsset(assetId int) (*model.PHAsset, bool) {
 
-	var selectAsset model.PHAsset
-	for _, asset := range us.assets {
-		if asset.ID == assetId {
-			selectAsset = asset
-			break
-		}
-		fmt.Println(asset)
-	}
+	//var selectAsset model.PHAsset
+	//for _, asset := range us.assets {
+	//	if asset.ID == assetId {
+	//		selectAsset = asset
+	//		break
+	//	}
+	//}
 
-	return &selectAsset, nil
+	asset, exists := us.assets[assetId]
+	return asset, exists
 }
 
 func (us *UserStorage) GetAssetContent(id int) ([]byte, error) {
 	// Get asset to resolve filename
-	asset, err := us.GetAsset(id)
-	if err != nil {
-		return nil, err
+	asset, exists := us.GetAsset(id)
+	if !exists {
+		return nil, fmt.Errorf("asset not found")
 	}
 
 	assetPath := filepath.Join(us.config.AssetsDir, asset.Filename)
@@ -133,9 +133,14 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 	for _, id := range assetIds {
 
 		// Load current asset
-		asset, err := us.metadata.LoadMetadata(id)
-		if err != nil {
-			return "", err
+		//asset, err := us.metadata.LoadMetadata(id)
+		//if err != nil {
+		//	return "", err
+		//}
+
+		asset, exists := us.GetAsset(id)
+		if !exists {
+			continue
 		}
 
 		// Apply updates
@@ -172,7 +177,7 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 				albumSet[id] = true
 			}
 
-			// Add new albums (avoid duplicates)
+			// Add new items (avoid duplicates)
 			for _, id := range update.AddAlbums {
 				if !albumSet[id] {
 					asset.Albums = append(asset.Albums, id)
@@ -180,7 +185,7 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 				}
 			}
 
-			// Remove specified albums
+			// Remove specified items
 			if len(update.RemoveAlbums) > 0 {
 				removeSet := make(map[int]bool)
 				for _, id := range update.RemoveAlbums {
@@ -280,6 +285,13 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 			return "", err
 		}
 
+		//for _, asset := range us.assets {
+		//	if asset.ID == asset.ID {
+		//		us.assets
+		//		break
+		//	}
+		//}
+
 		// Update indexes
 		//us.updateIndexesForAsset(asset)
 
@@ -291,6 +303,102 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 	merged := fmt.Sprintf(" %s, %d:", "update assets count: ", len(assetIds))
 
 	return merged, nil
+}
+
+func (us *UserStorage) PrepareAlbums() {
+	us.prepareAlbums()
+}
+
+func (us *UserStorage) GetSystemStats() Stats {
+	us.statsMu.Lock()
+	defer us.statsMu.Unlock()
+	return us.stats
+}
+
+func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+	us.mu.RLock()
+	defer us.mu.RUnlock()
+
+	startTime := time.Now()
+
+	// Step 1: Build criteria from with
+	criteria := assetBuildCriteria(with)
+
+	// Step 2: Find all matching assets (store pointers to original assets)
+	var matches []*model.PHAsset
+	totalCount := 0
+
+	for _, asset := range us.assets {
+		if criteria(*asset) {
+			matches = append(matches, asset)
+			totalCount++
+		}
+	}
+
+	//for i := range us.assets {
+	//	if criteria(us.assets[i]) {
+	//		matches = append(matches, &us.assets[i])
+	//		totalCount++
+	//	}
+	//}
+
+	// Apply sorting
+	assetSortAssets(matches, with.SortBy, with.SortOrder)
+
+	// Step 3: Apply pagination
+	start := with.FetchOffset
+	if start < 0 {
+		start = 0
+	}
+	if start > len(matches) {
+		start = len(matches)
+	}
+
+	end := start + with.FetchLimit
+	if end > len(matches) || with.FetchLimit <= 0 {
+		end = len(matches)
+	}
+
+	paginated := matches[start:end]
+
+	//Log performance
+	duration := time.Since(startTime)
+	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
+
+	//fmt.Println("matches[start:end]: ", start, end)
+	//fmt.Println("matches: ", with.FetchOffset)
+	fmt.Println("paginated: ", len(paginated))
+
+	return paginated, totalCount, nil
+}
+
+func (us *UserStorage) prepareAlbums() {
+
+	albums, err := us.albumManager.GetList(true)
+	if err != nil {
+	}
+
+	for _, album := range albums {
+		//a := model.PHCollectionAlbum{}
+
+		with := model.PHFetchOptions{
+			UserID:     4,
+			Albums:     []int{album.ID},
+			SortBy:     "modificationDate",
+			SortOrder:  "gg",
+			FetchLimit: 6,
+		}
+
+		assets, count, err := us.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		album.Count = count
+		//a.Album = album
+		//a.Assets = assets
+		us.albumManager.itemAssets[album.ID] = assets
+		//us.albumManager.items = append(us.albumManager.items, &a)
+	}
 }
 
 func (us *UserStorage) DeleteAsset(id int) error {
@@ -331,74 +439,18 @@ func (us *UserStorage) DeleteAsset(id int) error {
 	return nil
 }
 
-func (us *UserStorage) GetSystemStats() Stats {
-	us.statsMu.Lock()
-	defer us.statsMu.Unlock()
-	return us.stats
-}
-
-func (us *UserStorage) FilterAssets(filters model.AssetSearchFilters) ([]*model.PHAsset, int, error) {
-	us.mu.RLock()
-	defer us.mu.RUnlock()
-
-	startTime := time.Now()
-
-	// Step 1: Build criteria from filters
-	criteria := assetBuildCriteria(filters)
-
-	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*model.PHAsset
-	totalCount := 0
-
-	for i := range us.assets {
-		if criteria(us.assets[i]) {
-			matches = append(matches, &us.assets[i])
-			totalCount++
-		}
-	}
-
-	// Apply sorting
-	assetSortAssets(matches, filters.SortBy, filters.SortOrder)
-
-	// Step 3: Apply pagination
-	start := filters.FetchOffset
-	if start < 0 {
-		start = 0
-	}
-	if start > len(matches) {
-		start = len(matches)
-	}
-
-	end := start + filters.FetchLimit
-	if end > len(matches) || filters.FetchLimit <= 0 {
-		end = len(matches)
-	}
-
-	paginated := matches[start:end]
-
-	//Log performance
-	duration := time.Since(startTime)
-	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
-
-	fmt.Println("matches[start:end]: ", start, end)
-	fmt.Println("matches: ", filters.FetchOffset)
-	fmt.Println("paginated: ", len(paginated))
-
-	return paginated, totalCount, nil
-}
-
-func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.PHAsset] {
+func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset] {
 
 	return func(asset model.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
-		//if filters.UserID != 0 && asset.UserID != filters.UserID {
+		//if with.UserID != 0 && asset.UserID != with.UserID {
 		//	return false
 		//}
 
 		// Filter by Query (case-insensitive service in Filename/URL)
-		if filters.Query != "" {
-			query := strings.ToLower(filters.Query)
+		if with.Query != "" {
+			query := strings.ToLower(with.Query)
 			filename := strings.ToLower(asset.Filename)
 			url := strings.ToLower(asset.Url)
 			if !strings.Contains(filename, query) && !strings.Contains(url, query) {
@@ -407,61 +459,61 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 		}
 
 		//Filter by MediaType (if specified)
-		if filters.MediaType != "" && asset.MediaType != filters.MediaType {
+		if with.MediaType != "" && asset.MediaType != with.MediaType {
 			return false
 		}
 
 		// Filter by CameraModel (exact match)
-		if filters.CameraMake != "" && asset.CameraMake != filters.CameraMake {
+		if with.CameraMake != "" && asset.CameraMake != with.CameraMake {
 			return false
 		}
-		if filters.CameraModel != "" && asset.CameraModel != filters.CameraModel {
+		if with.CameraModel != "" && asset.CameraModel != with.CameraModel {
 			return false
 		}
 
 		// Filter by CreationDate range
-		if filters.StartDate != nil && asset.CreationDate.Before(*filters.StartDate) {
+		if with.StartDate != nil && asset.CreationDate.Before(*with.StartDate) {
 			return false
 		}
-		if filters.EndDate != nil && asset.CreationDate.After(*filters.EndDate) {
+		if with.EndDate != nil && asset.CreationDate.After(*with.EndDate) {
 			return false
 		}
 
 		// Filter by boolean flags (if specified)
-		if filters.IsFavorite != nil && asset.IsFavorite != *filters.IsFavorite {
+		if with.IsFavorite != nil && asset.IsFavorite != *with.IsFavorite {
 			return false
 		}
-		if filters.IsScreenshot != nil && asset.IsScreenshot != *filters.IsScreenshot {
+		if with.IsScreenshot != nil && asset.IsScreenshot != *with.IsScreenshot {
 			return false
 		}
-		if filters.IsHidden != nil && asset.IsHidden != *filters.IsHidden {
+		if with.IsHidden != nil && asset.IsHidden != *with.IsHidden {
 			return false
 		}
 
-		if filters.HideScreenshot != nil && *filters.HideScreenshot == false && asset.IsScreenshot == true {
+		if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
 			return false
 		}
 
 		// Filter by  int
-		if filters.PixelWidth != 0 && asset.PixelWidth != filters.PixelWidth {
+		if with.PixelWidth != 0 && asset.PixelWidth != with.PixelWidth {
 			return false
 		}
-		if filters.PixelHeight != 0 && asset.PixelHeight != filters.PixelHeight {
+		if with.PixelHeight != 0 && asset.PixelHeight != with.PixelHeight {
 			return false
 		}
 
 		// Filter by landscape orientation
-		if filters.IsLandscape != nil {
+		if with.IsLandscape != nil {
 			isLandscape := asset.PixelWidth > asset.PixelHeight
-			if isLandscape != *filters.IsLandscape {
+			if isLandscape != *with.IsLandscape {
 				return false
 			}
 		}
 
 		// Album filtering
-		if len(filters.Albums) > 0 {
+		if len(with.Albums) > 0 {
 			found := false
-			for _, albumID := range filters.Albums {
+			for _, albumID := range with.Albums {
 				for _, assetAlbumID := range asset.Albums {
 					if assetAlbumID == albumID {
 						found = true
@@ -481,25 +533,25 @@ func assetBuildCriteria(filters model.AssetSearchFilters) searchCriteria[model.P
 		if len(asset.Location) == 2 {
 
 			// Near point + radius search
-			if len(filters.NearPoint) == 2 && filters.WithinRadius > 0 {
+			if len(with.NearPoint) == 2 && with.WithinRadius > 0 {
 				distance := haversineDistance(
-					filters.NearPoint[0], filters.NearPoint[1],
+					with.NearPoint[0], with.NearPoint[1],
 					asset.Location[0], asset.Location[1],
 				)
-				if distance > filters.WithinRadius {
+				if distance > with.WithinRadius {
 					return false
 				}
 			}
 
 			// Bounding box search
-			if len(filters.BoundingBox) == 4 {
-				if !isInBoundingBox(asset.Location, filters.BoundingBox) {
+			if len(with.BoundingBox) == 4 {
+				if !isInBoundingBox(asset.Location, with.BoundingBox) {
 					return false
 				}
 			}
 		}
 
-		return true // Asset matches all active filters
+		return true // Asset matches all active with
 	}
 }
 
@@ -520,6 +572,7 @@ func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedIte
 	}
 	return results
 }
+
 func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 
 	if sortBy == "" {

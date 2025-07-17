@@ -2,9 +2,18 @@ package model
 
 import "time"
 
-type AlbumCollection struct {
-	Albums []Album `json:"albums,omitempty"`
-}
+//type AlbumCollection struct {
+//	Albums []Album `json:"albums"`
+//}
+
+//type PHCollectionListAlbum struct {
+//	Albums []PHCollectionAlbum `json:"albums"`
+//}
+
+//type PHCollectionAlbum struct {
+//	Album  *Album     `json:"album"`
+//	Assets []*PHAsset `json:"assets"`
+//}
 
 type Album struct {
 	ID               int       `json:"id"`

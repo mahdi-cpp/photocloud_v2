@@ -27,7 +27,12 @@ func (handler *TripHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, userID)
+	manager, err := handler.userStorageManager.GetTripManager(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	data, err := manager.GetList(true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -45,7 +50,12 @@ func (handler *TripHandler) Create(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, 4)
+	manager, err := handler.userStorageManager.GetTripManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	data, err := manager.Create(trip.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -63,7 +73,12 @@ func (handler *TripHandler) Update(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetTripManager(c, album.UserID)
+	manager, err := handler.userStorageManager.GetTripManager(c, album.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
 	album2, err := manager.Update(album.ID, album.Name)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
@@ -81,8 +96,13 @@ func (handler *TripHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	manager := handler.userStorageManager.GetAlbumManager(c, 4)
-	err := manager.Delete(album.ID)
+	manager, err := handler.userStorageManager.GetAlbumManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	err = manager.Delete(album.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

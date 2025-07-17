@@ -63,10 +63,11 @@ func (m *MetadataManager) LoadMetadata(id int) (*model.PHAsset, error) {
 	return &asset, nil
 }
 
-func (m *MetadataManager) LoadUserAllMetadata() ([]model.PHAsset, error) {
+func (m *MetadataManager) LoadUserAllMetadata() (map[int]*model.PHAsset, error) {
 
 	startTime := time.Now() // Capture start time
-	var assets []model.PHAsset
+
+	var assets = make(map[int]*model.PHAsset)
 
 	// Scan metadata directory
 	files, err := os.ReadDir(m.dir)
@@ -100,7 +101,8 @@ func (m *MetadataManager) LoadUserAllMetadata() ([]model.PHAsset, error) {
 			continue
 		}
 
-		assets = append(assets, *asset)
+		//assets = append(assets, asset)
+		assets[asset.ID] = asset
 	}
 
 	// Calculate and log execution duration
