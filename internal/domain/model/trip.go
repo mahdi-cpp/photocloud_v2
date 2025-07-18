@@ -6,6 +6,11 @@ type TripCollection struct {
 	Trips []Trip `json:"trips,omitempty"`
 }
 
+func (a *Trip) GetID() int                      { return a.ID }
+func (a *Trip) SetID(id int)                    { a.ID = id }
+func (a *Trip) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *Trip) SetModificationDate(t time.Time) { a.ModificationDate = t }
+
 type Trip struct {
 	ID               int       `json:"id"`
 	Name             string    `json:"name"`

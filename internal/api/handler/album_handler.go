@@ -18,6 +18,84 @@ func NewAlbumHandler(userStorageManager *storage.UserStorageManager) *AlbumHandl
 	}
 }
 
+func (handler *AlbumHandler) Create(c *gin.Context) {
+
+	var album model.Album
+	if err := c.ShouldBindJSON(&album); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	albumManager, err := handler.userStorageManager.GetAlbumManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	album2, err := albumManager.Create(&album)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	c.JSON(http.StatusCreated, album2)
+}
+
+func (handler *AlbumHandler) Update(c *gin.Context) {
+
+	var itemHandler model.AlbumHandler
+	if err := c.ShouldBindJSON(&itemHandler); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	fmt.Println("Album Collection Update: ", itemHandler.ID)
+
+	collectionManager, err := handler.userStorageManager.GetAlbumManager(c, itemHandler.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	item, err := collectionManager.Get(itemHandler.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	model.UpdateAlbum(item, itemHandler)
+
+	album2, err := collectionManager.Update(item)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	c.JSON(http.StatusCreated, album2)
+}
+
+func (handler *AlbumHandler) Delete(c *gin.Context) {
+
+	var album model.Album
+	if err := c.ShouldBindJSON(&album); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	albumManager, err := handler.userStorageManager.GetAlbumManager(c, 4)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	err = albumManager.Delete(album.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	c.JSON(http.StatusCreated, "delete ok")
+}
+
 func (handler *AlbumHandler) GetList(c *gin.Context) {
 	fmt.Println("Ip: ", c.ClientIP())
 
@@ -73,75 +151,4 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 	//}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func (handler *AlbumHandler) Create(c *gin.Context) {
-
-	var album model.Album
-	if err := c.ShouldBindJSON(&album); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	albumManager, err := handler.userStorageManager.GetAlbumManager(c, 4)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	album2, err := albumManager.Create(album.Name, album.AlbumType, album.IsCollection)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(http.StatusCreated, album2)
-}
-
-func (handler *AlbumHandler) Update(c *gin.Context) {
-
-	var album model.AlbumHandler
-	if err := c.ShouldBindJSON(&album); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	fmt.Println("Album Update: ", album.ID)
-
-	albumManager, err := handler.userStorageManager.GetAlbumManager(c, album.UserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	album2, err := albumManager.Update(album.ID, album.Name)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(http.StatusCreated, album2)
-}
-
-func (handler *AlbumHandler) Delete(c *gin.Context) {
-
-	var album model.Album
-	if err := c.ShouldBindJSON(&album); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-		return
-	}
-
-	albumManager, err := handler.userStorageManager.GetAlbumManager(c, 4)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	err = albumManager.Delete(album.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(http.StatusCreated, "delete ok")
 }

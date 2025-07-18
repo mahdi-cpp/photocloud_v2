@@ -23,7 +23,8 @@ type UserStorage struct {
 	user              model.User
 	assets            map[int]*model.PHAsset
 	albumManager      *AlbumManager
-	tripManager       *TripManager
+	collectionManager *CollectionManager[*model.Album]
+	tripManager       *CollectionManager[*model.Trip]
 	personManager     *PersonManager
 	pinnedManager     *PinnedManager
 	metadata          *MetadataManager
@@ -316,6 +317,7 @@ func (us *UserStorage) GetSystemStats() Stats {
 }
 
 func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+
 	us.mu.RLock()
 	defer us.mu.RUnlock()
 
@@ -374,12 +376,11 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 
 func (us *UserStorage) prepareAlbums() {
 
-	albums, err := us.albumManager.GetList(true)
+	items, err := us.collectionManager.GetAll()
 	if err != nil {
 	}
 
-	for _, album := range albums {
-		//a := model.PHCollectionAlbum{}
+	for _, album := range items {
 
 		with := model.PHFetchOptions{
 			UserID:     4,
@@ -394,10 +395,7 @@ func (us *UserStorage) prepareAlbums() {
 			continue
 		}
 		album.Count = count
-		//a.Album = album
-		//a.Assets = assets
-		us.albumManager.itemAssets[album.ID] = assets
-		//us.albumManager.items = append(us.albumManager.items, &a)
+		us.collectionManager.itemAssets[album.ID] = assets
 	}
 }
 

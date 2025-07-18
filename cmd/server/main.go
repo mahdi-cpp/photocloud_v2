@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/config"
-	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/api/handler"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"github.com/spf13/viper"
@@ -14,13 +13,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func main() {
 
 	// Initialize loader (with local image directory)
-	loader := image_loader.NewImageLoader(5000, "", 10*time.Minute)
+	//loader := image_loader.NewImageLoader(5000, "", 10*time.Minute)
 
 	//// Scan metadata directory
 	//files, err := os.ReadDir("/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets")
@@ -35,31 +33,31 @@ func main() {
 	//}
 	//
 	//// Load various image types
-	images := []string{
-		//"/var/cloud/upload/upload5/20190809_000407.jpg",
-		//"Screenshot_20240113_180718_Instagram.jpg",
-		//"Screenshot_20240120_020041_Instagram.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/18.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/17.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/25.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/26.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/27.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/28.jpg",
-		"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/42.jpg",
-
-		//"https://mahdiali.s3.ir-thr-at1.arvanstorage.ir/%D9%86%D9%82%D8%B4%D9%87-%D8%AA%D8%A7%DB%8C%D9%85%D8%B1-%D8%B1%D8%A7%D9%87-%D9%BE%D9%84%D9%87-%D8%B3%D9%87-%D8%B3%DB%8C%D9%85.jpg?versionId=", // Network URL
-		//"https://mahdicpp.s3.ir-thr-at1.arvanstorage.ir/0f470b87c13e25bc4211683711e71e2a.jpg?versionId=",
-	}
-
-	ctx := context.Background()
-	for _, img := range images {
-		data, err := loader.LoadImage(ctx, img)
-		if err != nil {
-			log.Printf("Failed to load %s: %v", img, err)
-			continue
-		}
-		fmt.Printf("Loaded %s (%d kB)\n", img, len(data)/1024)
-	}
+	//images := []string{
+	//	//"/var/cloud/upload/upload5/20190809_000407.jpg",
+	//	//"Screenshot_20240113_180718_Instagram.jpg",
+	//	//"Screenshot_20240120_020041_Instagram.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/18.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/17.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/25.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/26.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/27.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/28.jpg",
+	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/42.jpg",
+	//
+	//	//"https://mahdiali.s3.ir-thr-at1.arvanstorage.ir/%D9%86%D9%82%D8%B4%D9%87-%D8%AA%D8%A7%DB%8C%D9%85%D8%B1-%D8%B1%D8%A7%D9%87-%D9%BE%D9%84%D9%87-%D8%B3%D9%87-%D8%B3%DB%8C%D9%85.jpg?versionId=", // Network URL
+	//	//"https://mahdicpp.s3.ir-thr-at1.arvanstorage.ir/0f470b87c13e25bc4211683711e71e2a.jpg?versionId=",
+	//}
+	//
+	//ctx := context.Background()
+	//for _, img := range images {
+	//	data, err := loader.LoadImage(ctx, img)
+	//	if err != nil {
+	//		log.Printf("Failed to load %s: %v", img, err)
+	//		continue
+	//	}
+	//	fmt.Printf("Loaded %s (%d kB)\n", img, len(data)/1024)
+	//}
 
 	//Print metrics
 	//f, n, g, e, avg := loader.Metrics()
@@ -71,8 +69,8 @@ func main() {
 	//fmt.Printf("Avg load time: %s\n", avg)
 
 	//Get metrics
-	loadMetric := loader.Metrics()
-	fmt.Printf("CurrentCacheBytes: %s\n", image_loader.FormatBytes(loadMetric.CurrentCacheBytes))
+	//loadMetric := loader.Metrics()
+	//fmt.Printf("CurrentCacheBytes: %s\n", image_loader.FormatBytes(loadMetric.CurrentCacheBytes))
 
 	// Load configuration
 	cfg, err := loadConfig()
@@ -179,8 +177,11 @@ func createRouter(
 		api.GET("/search", searchHandler.Search)
 		api.POST("/search/filters", searchHandler.Filters)
 
-		api.POST("/collection/collection", collectionHandler.GetCollection)
-		api.POST("/collection/collectionList", collectionHandler.GetCollectionList)
+		api.POST("/collection/create", collectionHandler.Create)
+		api.POST("/collection/update", collectionHandler.Update)
+		api.POST("/collection/delete", collectionHandler.Delete)
+		api.POST("/collection/collection_list", collectionHandler.GetCollectionList)
+		api.POST("/collection/collection_list_with", collectionHandler.GetCollectionListWith)
 
 		// Asset routes
 		api.POST("/assets", assetHandler.Upload)

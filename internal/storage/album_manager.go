@@ -53,8 +53,8 @@ func (manager *AlbumManager) load() ([]model.Album, error) {
 	return result, nil
 }
 
-func (manager *AlbumManager) Create(name string, albumType string, isCollection bool) (*model.Album, error) {
-	var newAlbum *model.Album
+func (manager *AlbumManager) Create(newItem *model.Album) (*model.Album, error) {
+	//var newAlbum *model.Album
 
 	err := manager.metadata.Update(func(collectionList *model.PHCollectionList[*model.Album]) error {
 
@@ -66,31 +66,16 @@ func (manager *AlbumManager) Create(name string, albumType string, isCollection 
 			}
 		}
 
-		newAlbum = &model.Album{
-			ID:               maxID + 1,
-			Name:             name,
-			AlbumType:        albumType,
-			IsCollection:     isCollection,
-			IsHidden:         false,
-			CreationDate:     time.Now(),
-			ModificationDate: time.Now(),
-		}
+		newItem.ID = maxID + 1
+		newItem.CreationDate = time.Now()
+		newItem.ModificationDate = time.Now()
 
-		// Create as POINTER to PHCollection
-		//result := &model.PHCollection[model.Album]{
-		//	Item:   *newAlbum,
-		//	Assets: nil,
-		//}
-
-		manager.items.Register(strconv.Itoa(newAlbum.ID), *newAlbum)
-
-		// Append pointer to the collection
-		//collectionList.Collections = append(collectionList.Collections, result)
+		manager.items.Register(strconv.Itoa(newItem.ID), *newItem)
 
 		// Add to collection
 		collectionList.Collections = append(collectionList.Collections,
 			&model.PHCollection[*model.Album]{
-				Item:   newAlbum,
+				Item:   newItem,
 				Assets: nil,
 			})
 
@@ -101,24 +86,19 @@ func (manager *AlbumManager) Create(name string, albumType string, isCollection 
 		manager.parent.prepareAlbums()
 	}
 
-	return newAlbum, err
+	return newItem, err
 }
 
-func (manager *AlbumManager) GetAlbumAssets(albumID int) ([]*model.PHAsset, error) {
-	return manager.itemAssets[albumID], nil
-}
-
-func (manager *AlbumManager) Update(id int, name string) (*model.Album, error) {
+func (manager *AlbumManager) Update(itemUpdate *model.Album) (*model.Album, error) {
 
 	var updatedAlbum *model.Album
 
 	err := manager.metadata.Update(func(collectionList *model.PHCollectionList[*model.Album]) error {
+
 		for i, collection := range collectionList.Collections {
-			if collection.Item.ID == id {
-				// Update fields
-				collectionList.Collections[i].Item.Name = name
-				//collectionList.Album[i].AlbumType = albumType
-				//collectionList.Album[i].IsHidden = isHidden
+			if collection.Item.ID == itemUpdate.ID {
+
+				collectionList.Collections[i].Item = itemUpdate
 				collectionList.Collections[i].Item.ModificationDate = time.Now()
 
 				updatedAlbum = collectionList.Collections[i].Item
@@ -126,6 +106,7 @@ func (manager *AlbumManager) Update(id int, name string) (*model.Album, error) {
 				return nil
 			}
 		}
+
 		return errors.New("collection not found")
 	})
 
@@ -185,6 +166,10 @@ func (manager *AlbumManager) GetByType(albumType string) ([]model.Album, error) 
 		}
 	}
 	return result, nil
+}
+
+func (manager *AlbumManager) GetAlbumAssets(albumID int) ([]*model.PHAsset, error) {
+	return manager.itemAssets[albumID], nil
 }
 
 func getKey(id int) string {

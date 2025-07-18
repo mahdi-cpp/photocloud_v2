@@ -2,18 +2,10 @@ package model
 
 import "time"
 
-//type AlbumCollection struct {
-//	Albums []Album `json:"albums"`
-//}
-
-//type PHCollectionListAlbum struct {
-//	Albums []PHCollectionAlbum `json:"albums"`
-//}
-
-//type PHCollectionAlbum struct {
-//	Album  *Album     `json:"album"`
-//	Assets []*PHAsset `json:"assets"`
-//}
+func (a *Album) GetID() int                      { return a.ID }
+func (a *Album) SetID(id int)                    { a.ID = id }
+func (a *Album) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *Album) SetModificationDate(t time.Time) { a.ModificationDate = t }
 
 type Album struct {
 	ID               int       `json:"id"`
@@ -30,6 +22,28 @@ type AlbumHandler struct {
 	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
-	IsCollection bool   `json:"IsCollection,omitempty"`
-	IsHidden     bool   `json:"isHidden,omitempty"`
+	AlbumType    string `json:"albumType,omitempty"`
+	IsCollection *bool  `json:"isCollection,omitempty"`
+	IsHidden     *bool  `json:"isHidden,omitempty"`
+}
+
+func UpdateAlbum(album *Album, handler AlbumHandler) *Album {
+
+	if handler.Name != "" {
+		album.Name = handler.Name
+	}
+
+	if handler.AlbumType != "" {
+		album.AlbumType = handler.AlbumType
+	}
+
+	if handler.IsCollection != nil {
+		album.IsCollection = *handler.IsCollection
+	}
+
+	if handler.IsHidden != nil {
+		album.IsHidden = *handler.IsHidden
+	}
+
+	return album
 }

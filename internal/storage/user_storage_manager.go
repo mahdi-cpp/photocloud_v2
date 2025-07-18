@@ -110,7 +110,7 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	userMetadataDir := filepath.Join(us.config.AppDir, user.Username, us.config.MetadataDir)
 	userThumbnailsDir := filepath.Join(us.config.AppDir, user.Username, us.config.ThumbnailsDir)
 	albumFile := filepath.Join(us.config.AppDir, user.Username, us.config.AlbumCollectionFile)
-	tripFile := filepath.Join(us.config.AppDir, user.Username, us.config.TripCollectionFile)
+	//tripFile := filepath.Join(us.config.AppDir, user.Username, us.config.TripCollectionFile)
 	personFile := filepath.Join(us.config.AppDir, user.Username, us.config.PersonCollectionFile)
 	pinnedCollectionFile := filepath.Join(us.config.AppDir, user.Username, "pinnedCollectionFile.json")
 
@@ -139,14 +139,23 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 
 	userStorage.pinnedManager, _ = NewPinnedManager(pinnedCollectionFile)
 	userStorage.albumManager, _ = NewAlbumManager(userStorage, albumFile)
-	userStorage.tripManager, _ = NewTripManager(tripFile)
+	//userStorage.tripManager, _ = NewTripManager(tripFile)
 	userStorage.personManager, _ = NewPersonManager(personFile)
 
-	// Load user assets
 	var err error
 	userStorage.assets, err = userStorage.metadata.LoadUserAllMetadata()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
+	}
+
+	userStorage.collectionManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
+	if err != nil {
+		panic(err)
+	}
+
+	userStorage.tripManager, err = NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
+	if err != nil {
+		panic(err)
 	}
 
 	userStorage.prepareAlbums()
@@ -187,13 +196,22 @@ func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*Albu
 	return userStorage.albumManager, nil
 }
 
-func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*TripManager, error) {
+func (us *UserStorageManager) GetCollectionManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return userStorage.tripManager, err
+	return userStorage.collectionManager, nil
+}
+
+func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*TripManager, error) {
+	_, err := us.GetStorageForUser(c, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, err
 }
 
 func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*PersonManager, error) {
