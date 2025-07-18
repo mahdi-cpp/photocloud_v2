@@ -96,8 +96,7 @@ func (handler *AlbumHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusCreated, "delete ok")
 }
 
-func (handler *AlbumHandler) GetList(c *gin.Context) {
-	fmt.Println("Ip: ", c.ClientIP())
+func (handler *AlbumHandler) GetCollectionList(c *gin.Context) {
 
 	albumManager, err := handler.userStorageManager.GetAlbumManager(c, 4)
 	if err != nil {
@@ -105,7 +104,7 @@ func (handler *AlbumHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	albums, err := albumManager.GetList(true)
+	albums, err := albumManager.GetAll()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -122,7 +121,7 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	albums, err := albumManager.GetAlbumList()
+	albums, err := albumManager.GetAll()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -135,20 +134,12 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 	}
 
 	for i, album := range albums {
-		assets, _ := albumManager.GetAlbumAssets(album.ID)
-
+		assets, _ := albumManager.GetItemAssets(album.ID)
 		result.Collections[i] = &model.PHCollection[*model.Album]{
-			Item:   &album,
+			Item:   album,
 			Assets: assets,
 		}
 	}
-
-	//fetchResult := model.PHFetchResult[model.PHCollectionList[*model.Album]]{
-	//	Item:  result,
-	//	Total:  len(albums),
-	//	Limit:  100,
-	//	Offset: 100,
-	//}
 
 	c.JSON(http.StatusOK, result)
 }

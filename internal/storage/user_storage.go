@@ -22,11 +22,10 @@ type UserStorage struct {
 	mu                sync.RWMutex // Protects all indexes and maps
 	user              model.User
 	assets            map[int]*model.PHAsset
-	albumManager      *AlbumManager
-	collectionManager *CollectionManager[*model.Album]
+	albumManager      *CollectionManager[*model.Album]
 	tripManager       *CollectionManager[*model.Trip]
-	personManager     *PersonManager
-	pinnedManager     *PinnedManager
+	personManager     *CollectionManager[*model.Person]
+	pinnedManager     *CollectionManager[*model.Pinned]
 	metadata          *MetadataManager
 	thumbnail         *ThumbnailManager
 	lastID            int
@@ -376,7 +375,7 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 
 func (us *UserStorage) prepareAlbums() {
 
-	items, err := us.collectionManager.GetAll()
+	items, err := us.albumManager.GetAll()
 	if err != nil {
 	}
 
@@ -395,7 +394,7 @@ func (us *UserStorage) prepareAlbums() {
 			continue
 		}
 		album.Count = count
-		us.collectionManager.itemAssets[album.ID] = assets
+		us.albumManager.itemAssets[album.ID] = assets
 	}
 }
 
@@ -528,26 +527,26 @@ func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset]
 		}
 
 		// Location filtering
-		if len(asset.Location) == 2 {
-
-			// Near point + radius search
-			if len(with.NearPoint) == 2 && with.WithinRadius > 0 {
-				distance := haversineDistance(
-					with.NearPoint[0], with.NearPoint[1],
-					asset.Location[0], asset.Location[1],
-				)
-				if distance > with.WithinRadius {
-					return false
-				}
-			}
-
-			// Bounding box search
-			if len(with.BoundingBox) == 4 {
-				if !isInBoundingBox(asset.Location, with.BoundingBox) {
-					return false
-				}
-			}
-		}
+		//if len(asset.Location) == 2 {
+		//
+		//	// Near point + radius search
+		//	if len(with.NearPoint) == 2 && with.WithinRadius > 0 {
+		//		distance := indexer.haversineDistance(
+		//			with.NearPoint[0], with.NearPoint[1],
+		//			asset.Location[0], asset.Location[1],
+		//		)
+		//		if distance > with.WithinRadius {
+		//			return false
+		//		}
+		//	}
+		//
+		//	// Bounding box search
+		//	if len(with.BoundingBox) == 4 {
+		//		if !indexer.isInBoundingBox(asset.Location, with.BoundingBox) {
+		//			return false
+		//		}
+		//	}
+		//}
 
 		return true // Asset matches all active with
 	}

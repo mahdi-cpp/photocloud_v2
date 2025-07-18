@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/internal/storage/indexer"
 	"github.com/mahdi-cpp/photocloud_v2/registery"
 	_ "image/jpeg"
 	_ "image/png"
@@ -38,8 +37,8 @@ type PhotoStorage struct {
 	update    *UpdateManager
 	thumbnail *ThumbnailManager
 
-	username    string
-	userService *UserManager
+	username string
+	//userService *UserManager
 
 	albumRegistry *registery.Registry[model.Album]
 
@@ -55,7 +54,7 @@ type PhotoStorage struct {
 	cameraIndex     map[string][]int // cameraModel -> []assetID
 
 	// Indexers
-	indexers map[string]indexer.Indexer
+	indexers map[string]Indexer
 
 	lastID            int
 	indexDirty        bool
@@ -78,8 +77,8 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		config: cfg,
 		cache:  NewLRUCache(cfg.CacheSize),
 
-		username:    "Mahdi_Abdolmaleki",
-		userService: NewUserManager(cfg.AppDir),
+		username: "Mahdi_Abdolmaleki",
+		//userService: NewUserManager(cfg.AppDir),
 
 		metadata:      NewMetadataManager(cfg.MetadataDir),
 		update:        NewUpdateManager(cfg.MetadataDir),
@@ -98,15 +97,15 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 
-		indexers: map[string]indexer.Indexer{
-			"text": indexer.NewTextIndexer(),
-			"date": indexer.NewDateIndexer(),
+		indexers: map[string]Indexer{
+			"text": NewTextIndexer(),
+			"date": NewDateIndexer(),
 			//"mediaType": NewMediaTypeIndexer(),
 			//"camera":    NewCameraIndexer(),
-			"favorite":   indexer.NewBoolIndexer("IsFavorite"),
-			"hidden":     indexer.NewBoolIndexer("IsHidden"),
-			"screenshot": indexer.NewBoolIndexer("IsScreenshot"),
-			"landscape":  indexer.NewBoolIndexer("IsLandscape"),
+			"favorite":   NewBoolIndexer("IsFavorite"),
+			"hidden":     NewBoolIndexer("IsHidden"),
+			"screenshot": NewBoolIndexer("IsScreenshot"),
+			"landscape":  NewBoolIndexer("IsLandscape"),
 		},
 	}
 
@@ -960,7 +959,7 @@ func (ps *PhotoStorage) loadIndex() error {
 }
 
 type SerializableIndexer interface {
-	indexer.Indexer
+	Indexer
 	Serialize() ([]byte, error)
 	Deserialize(data []byte) error
 }

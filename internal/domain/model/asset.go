@@ -33,15 +33,15 @@ type PHAsset struct {
 	Persons []int `json:"persons"`
 
 	// Video Properties
-	Duration float64 `gorm:"default:0" json:"duration"`
+	Duration float64 `json:"duration"`
 
 	// Content Availability
-	CanDelete           bool `gorm:"default:true" json:"canDelete"`
-	CanEditContent      bool `gorm:"default:true" json:"canEditContent"`
-	CanAddToSharedAlbum bool `gorm:"default:true" json:"CanAddToSharedAlbum"`
+	CanDelete           bool `json:"canDelete"`
+	CanEditContent      bool `json:"canEditContent"`
+	CanAddToSharedAlbum bool `json:"canAddToSharedAlbum"`
 
 	// Advanced Properties
-	IsUserLibraryAsset bool `gorm:"default:true" json:"IsUserLibraryAsset"`
+	IsUserLibraryAsset bool `json:"IsUserLibraryAsset"`
 
 	CapturedDate     time.Time `json:"capturedDate"`
 	CreationDate     time.Time `json:"creationDate"`
@@ -112,13 +112,6 @@ type AssetDelete struct {
 	UserID  int `json:"userID"`
 	AssetID int `json:"assetID"`
 }
-
-//type PHFetchResult struct {
-//	Item  []*PHAsset `json:"items"`
-//	Total  int        `json:"total"`
-//	Limit  int        `json:"limit"`
-//	Offset int        `json:"offset"`
-//}
 
 // https://chat.deepseek.com/a/chat/s/9b010f32-b23d-4f9b-ae0c-31a9b2c9408c
 

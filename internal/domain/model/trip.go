@@ -2,10 +2,6 @@ package model
 
 import "time"
 
-type TripCollection struct {
-	Trips []Trip `json:"trips,omitempty"`
-}
-
 func (a *Trip) GetID() int                      { return a.ID }
 func (a *Trip) SetID(id int)                    { a.ID = id }
 func (a *Trip) SetCreationDate(t time.Time)     { a.CreationDate = t }
@@ -25,6 +21,23 @@ type TripHandler struct {
 	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
-	IsCollection *bool  `json:"IsCollection,omitempty"`
-	IsHidden     *bool  `json:"isHidden,omitempty"`
+	TripType     string `json:"trip,omitempty"`
+	IsCollection *bool  `json:"isCollection,omitempty"`
+}
+
+func UpdateTrip(trip *Trip, handler TripHandler) *Trip {
+
+	if handler.Name != "" {
+		trip.Name = handler.Name
+	}
+
+	if handler.TripType != "" {
+		trip.TripType = handler.TripType
+	}
+
+	if handler.IsCollection != nil {
+		trip.IsCollection = *handler.IsCollection
+	}
+
+	return trip
 }

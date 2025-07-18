@@ -95,20 +95,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	collectionHandler := handler.NewCollectionHandler(userStorageManager)
-
-	// Handler handlers
+	userHandler := handler.NewUserHandler(userStorageManager)
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
 	//systemHandler := handler.NewSystemHandler(userStorageManager)
 
-	pinnedHandler := handler.NewPinnedHandler(userStorageManager)
 	albumHandler := handler.NewAlbumHandler(userStorageManager)
 	tripHandler := handler.NewTripHandler(userStorageManager)
-	personHandler := handler.NewPersonHandler(userStorageManager)
+	personHandler := handler.NewPersonsHandler(userStorageManager)
+	pinnedHandler := handler.NewPinnedHandler(userStorageManager)
 
 	// Handler Gin router
-	router := createRouter(cfg, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler, collectionHandler)
+	router := createRouter(cfg, userHandler, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler)
 
 	// Start server
 	startServer(cfg, router)
@@ -156,13 +154,13 @@ func loadConfig() (*config.Config, error) {
 
 func createRouter(
 	cfg *config.Config,
+	userHandler *handler.UserHandler,
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
 	tripHandler *handler.TripHandler,
 	personHandler *handler.PersonHandler,
 	searchHandler *handler.SearchHandler,
 	pinnedHandler *handler.PinnedHandler,
-	collectionHandler *handler.CollectionHandler,
 ) *gin.Engine {
 	// Set Gin mode
 	gin.SetMode(cfg.Server.Mode)
@@ -173,15 +171,14 @@ func createRouter(
 	// API routes
 	api := router.Group("/api/v1")
 	{
+		api.POST("/user/create", userHandler.Create)
+		api.POST("/user/update", userHandler.Update)
+		api.POST("/user/delete", userHandler.Delete)
+		api.POST("/user/list", userHandler.GetCollectionList)
+
 		// Search routes
 		api.GET("/search", searchHandler.Search)
 		api.POST("/search/filters", searchHandler.Filters)
-
-		api.POST("/collection/create", collectionHandler.Create)
-		api.POST("/collection/update", collectionHandler.Update)
-		api.POST("/collection/delete", collectionHandler.Delete)
-		api.POST("/collection/collection_list", collectionHandler.GetCollectionList)
-		api.POST("/collection/collection_list_with", collectionHandler.GetCollectionListWith)
 
 		// Asset routes
 		api.POST("/assets", assetHandler.Upload)
@@ -193,26 +190,26 @@ func createRouter(
 		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
 		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
 
-		api.POST("/pinned/create", pinnedHandler.Create)
-		api.POST("/pinned/update", pinnedHandler.Update)
-		api.POST("/pinned/delete", pinnedHandler.Delete)
-		api.GET("/pinned/getList", pinnedHandler.GetList)
-
 		api.POST("/album/create", albumHandler.Create)
 		api.POST("/album/update", albumHandler.Update)
 		api.POST("/album/delete", albumHandler.Delete)
-		api.GET("/album/getList", albumHandler.GetList)
-		api.GET("/album/getListV2", albumHandler.GetListV2)
+		api.POST("/album/getList", albumHandler.GetCollectionList)
+		api.POST("/album/getListV2", albumHandler.GetListV2)
 
 		api.POST("/trip/create", tripHandler.Create)
 		api.POST("/trip/update", tripHandler.Update)
 		api.POST("/trip/delete", tripHandler.Delete)
-		api.GET("/trip/getList", tripHandler.GetList)
+		api.POST("/trip/getList", tripHandler.GetCollectionList)
 
 		api.POST("/person/create", personHandler.Create)
 		api.POST("/person/update", personHandler.Update)
 		api.POST("/person/delete", personHandler.Delete)
-		api.GET("/person/getList", personHandler.GetList)
+		api.POST("/person/getList", personHandler.GetCollectionList)
+
+		api.POST("/pinned/create", pinnedHandler.Create)
+		api.POST("/pinned/update", pinnedHandler.Update)
+		api.POST("/pinned/delete", pinnedHandler.Delete)
+		api.POST("/pinned/getList", pinnedHandler.GetCollectionList)
 
 		//api.PUT("/assets/:id", assetHandler.Update)
 		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)

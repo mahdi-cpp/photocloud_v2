@@ -2,21 +2,60 @@ package model
 
 import "time"
 
-type UserCollection struct {
-	Users []User `json:"users,omitempty"`
-}
+func (a *User) GetID() int                      { return a.ID }
+func (a *User) SetID(id int)                    { a.ID = id }
+func (a *User) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *User) SetModificationDate(t time.Time) { a.ModificationDate = t }
 
 type User struct {
-	ID          int       `gorm:"primaryKey;autoIncrement" json:"id"`
-	Username    string    `gorm:"type:varchar(50);unique" json:"username"`
-	PhoneNumber string    `gorm:"type:varchar(20);unique;not null" json:"phoneNumber"`
-	Email       string    `gorm:"type:varchar(100)" json:"email"`
-	FirstName   string    `gorm:"type:varchar(50)" json:"firstName"`
-	LastName    string    `gorm:"type:varchar(50)" json:"lastName"`
-	Bio         string    `gorm:"type:text" json:"bio"`
-	AvatarURL   string    `gorm:"type:varchar(255)" json:"avatarUrl"`
-	IsOnline    bool      `gorm:"default:false" json:"isOnline"`
-	LastSeen    time.Time `json:"lastSeen"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
+	ID               int       `json:"id"`
+	Username         string    `json:"username"`
+	PhoneNumber      string    `json:"phoneNumber"`
+	Email            string    `json:"email"`
+	FirstName        string    `json:"firstName"`
+	LastName         string    `json:"lastName"`
+	Bio              string    `json:"bio"`
+	AvatarURL        string    `json:"avatarURL"`
+	IsOnline         bool      `json:"isOnline"`
+	LastSeen         time.Time `json:"lastSeen"`
+	CreationDate     time.Time `json:"creationDate"`
+	ModificationDate time.Time `json:"modificationDate"`
+}
+
+type UserHandler struct {
+	ID          int    `json:"id"`
+	Username    string `json:"username,omitempty"`
+	PhoneNumber string `json:"phoneNumber,omitempty"`
+	FirstName   string `json:"firstName,omitempty"`
+	LastName    string `json:"lastName,omitempty"`
+	Email       string `json:"email,omitempty"`
+	AvatarURL   string `json:"avatarURL,omitempty"`
+	IsOnline    *bool  `json:"isOnline,omitempty"`
+}
+
+func UpdateUser(user *User, handler UserHandler) *User {
+
+	if handler.Username != "" {
+		user.Username = handler.Username
+	}
+	if handler.PhoneNumber != "" {
+		user.PhoneNumber = handler.PhoneNumber
+	}
+	if handler.FirstName != "" {
+		user.FirstName = handler.FirstName
+	}
+	if handler.LastName != "" {
+		user.LastName = handler.LastName
+	}
+	if handler.Email != "" {
+		user.Email = handler.Email
+	}
+	if handler.AvatarURL != "" {
+		user.AvatarURL = handler.AvatarURL
+	}
+	if handler.IsOnline != nil {
+		user.IsOnline = *handler.IsOnline
+	}
+
+	return user
 }

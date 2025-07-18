@@ -2,9 +2,10 @@ package model
 
 import "time"
 
-type PinnedCollection struct {
-	Pins []Pinned `json:"pins,omitempty"`
-}
+func (a *Pinned) GetID() int                      { return a.ID }
+func (a *Pinned) SetID(id int)                    { a.ID = id }
+func (a *Pinned) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *Pinned) SetModificationDate(t time.Time) { a.ModificationDate = t }
 
 type Pinned struct {
 	ID               int       `json:"id"`
@@ -19,6 +20,19 @@ type PinnedHandler struct {
 	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
-	IsCollection *bool  `json:"IsCollection,omitempty"`
+	IsCollection *bool  `json:"isCollection,omitempty"`
 	IsHidden     *bool  `json:"isHidden,omitempty"`
+}
+
+func UpdatePinned(pinned *Pinned, handler PinnedHandler) *Pinned {
+
+	if handler.Name != "" {
+		pinned.Name = handler.Name
+	}
+
+	if handler.IsCollection != nil {
+		pinned.IsCollection = *handler.IsCollection
+	}
+
+	return pinned
 }

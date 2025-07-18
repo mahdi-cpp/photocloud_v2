@@ -41,7 +41,7 @@ type UserStorageManager struct {
 	mu                  sync.RWMutex
 	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
 	config              Config
-	userManager         *UserManager
+	userManager         *CollectionManager[*model.User]
 	originalImageLoader *image_loader.ImageLoader
 	tinyImageLoader     *image_loader.ImageLoader
 	iconLoader          *image_loader.ImageLoader
@@ -52,10 +52,15 @@ func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
 
 	// Handler the manager
 	manager := &UserStorageManager{
-		storages:    make(map[int]*UserStorage),
-		config:      cfg,
-		userManager: NewUserManager("/media/mahdi/Cloud/apps/system/users.json"),
-		ctx:         context.Background(),
+		storages: make(map[int]*UserStorage),
+		config:   cfg,
+		ctx:      context.Background(),
+	}
+
+	var err error
+	manager.userManager, err = NewCollectionManager[*model.User]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/users.json")
+	if err != nil {
+		panic(err)
 	}
 
 	manager.originalImageLoader = image_loader.NewImageLoader(50, "/media/mahdi/Cloud/apps/Photos", 5*time.Minute)
@@ -88,12 +93,14 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	us.mu.Lock()
 	defer us.mu.Unlock()
 
+	var err error
+
 	if userID <= 0 {
 		return nil, fmt.Errorf("user id is Invalid")
 	}
 
-	var user, exists = us.userManager.GetById(userID)
-	if !exists {
+	user, err := us.userManager.Get(userID)
+	if err != nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
@@ -109,10 +116,10 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	userAssetDir := filepath.Join(us.config.AppDir, user.Username, us.config.AssetsDir)
 	userMetadataDir := filepath.Join(us.config.AppDir, user.Username, us.config.MetadataDir)
 	userThumbnailsDir := filepath.Join(us.config.AppDir, user.Username, us.config.ThumbnailsDir)
-	albumFile := filepath.Join(us.config.AppDir, user.Username, us.config.AlbumCollectionFile)
+	//albumFile := filepath.Join(us.config.AppDir, user.Username, us.config.AlbumCollectionFile)
 	//tripFile := filepath.Join(us.config.AppDir, user.Username, us.config.TripCollectionFile)
-	personFile := filepath.Join(us.config.AppDir, user.Username, us.config.PersonCollectionFile)
-	pinnedCollectionFile := filepath.Join(us.config.AppDir, user.Username, "pinnedCollectionFile.json")
+	//personFile := filepath.Join(us.config.AppDir, user.Username, us.config.PersonCollectionFile)
+	//pinnedCollectionFile := filepath.Join(us.config.AppDir, user.Username, "pinnedCollectionFile.json")
 
 	// Ensure user directories exist
 	userDirs := []string{userAssetDir, userMetadataDir, userThumbnailsDir}
@@ -130,30 +137,34 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 	// Handler new userStorage for this user
 	userStorage := &UserStorage{
 		config:            userConfig,
-		user:              user,
+		user:              *user,
 		metadata:          NewMetadataManager(userMetadataDir),
 		thumbnail:         NewThumbnailManager(userThumbnailsDir),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 	}
 
-	userStorage.pinnedManager, _ = NewPinnedManager(pinnedCollectionFile)
-	userStorage.albumManager, _ = NewAlbumManager(userStorage, albumFile)
-	//userStorage.tripManager, _ = NewTripManager(tripFile)
-	userStorage.personManager, _ = NewPersonManager(personFile)
-
-	var err error
 	userStorage.assets, err = userStorage.metadata.LoadUserAllMetadata()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.collectionManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
+	userStorage.albumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
 	if err != nil {
 		panic(err)
 	}
 
 	userStorage.tripManager, err = NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
+	if err != nil {
+		panic(err)
+	}
+
+	userStorage.personManager, err = NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
+	if err != nil {
+		panic(err)
+	}
+
+	userStorage.pinnedManager, err = NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
 	if err != nil {
 		panic(err)
 	}
@@ -178,16 +189,11 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 	}
 }
 
-func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*PinnedManager, error) {
-	userStorage, err := us.GetStorageForUser(c, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return userStorage.pinnedManager, nil
+func (us *UserStorageManager) GetUserManager() (*CollectionManager[*model.User], error) {
+	return us.userManager, nil
 }
 
-func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*AlbumManager, error) {
+func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
 		return nil, err
@@ -196,31 +202,31 @@ func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*Albu
 	return userStorage.albumManager, nil
 }
 
-func (us *UserStorageManager) GetCollectionManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
+func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*CollectionManager[*model.Trip], error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return userStorage.collectionManager, nil
+	return userStorage.tripManager, nil
 }
 
-func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*TripManager, error) {
-	_, err := us.GetStorageForUser(c, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, err
-}
-
-func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*PersonManager, error) {
+func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
 	userStorage, err := us.GetStorageForUser(c, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return userStorage.personManager, nil
+}
+
+func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*CollectionManager[*model.Pinned], error) {
+	userStorage, err := us.GetStorageForUser(c, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return userStorage.pinnedManager, nil
 }
 
 func (us *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {

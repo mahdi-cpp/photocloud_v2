@@ -156,7 +156,7 @@ func (manager *CollectionManager[T]) GetBy(filterFunc func(T) bool) ([]T, error)
 	return result, nil
 }
 
-func (manager *CollectionManager[T]) GetAlbumAssets(id int) ([]*model.PHAsset, error) {
+func (manager *CollectionManager[T]) GetItemAssets(id int) ([]*model.PHAsset, error) {
 	return manager.itemAssets[id], nil
 }
 

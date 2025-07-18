@@ -1,4 +1,4 @@
-package indexer
+package storage
 
 //
 //type TextIndexer struct {
