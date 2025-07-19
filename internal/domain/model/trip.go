@@ -18,7 +18,6 @@ type Trip struct {
 }
 
 type TripHandler struct {
-	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
 	TripType     string `json:"trip,omitempty"`

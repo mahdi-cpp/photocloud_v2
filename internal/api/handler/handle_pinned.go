@@ -19,13 +19,20 @@ func NewPinnedHandler(userStorageManager *storage.UserStorageManager) *PinnedHan
 }
 
 func (handler *PinnedHandler) Create(c *gin.Context) {
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var item model.Pinned
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, 4)
+	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -42,13 +49,19 @@ func (handler *PinnedHandler) Create(c *gin.Context) {
 
 func (handler *PinnedHandler) Update(c *gin.Context) {
 
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var itemHandler model.PinnedHandler
 	if err := c.ShouldBindJSON(&itemHandler); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, itemHandler.UserID)
+	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -70,13 +83,20 @@ func (handler *PinnedHandler) Update(c *gin.Context) {
 }
 
 func (handler *PinnedHandler) Delete(c *gin.Context) {
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var item model.Pinned
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, 4)
+	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -91,9 +111,15 @@ func (handler *PinnedHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusCreated, "Delete item with id:"+strconv.Itoa(item.ID))
 }
 
-func (handler *PinnedHandler) GetCollectionList(c *gin.Context) {
+func (handler *PinnedHandler) GetList(c *gin.Context) {
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, 4)
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -118,12 +144,18 @@ func (handler *PinnedHandler) GetCollectionList(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
 func (handler *PinnedHandler) GetCollectionListWith(c *gin.Context) {
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, 4)
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -131,12 +163,12 @@ func (handler *PinnedHandler) GetCollectionListWith(c *gin.Context) {
 
 	// Get only visible items
 	items, err := collectionManager.GetList(func(a *model.Pinned) bool {
-		return !a.IsCollection
+		return a.Icon == ""
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	c.JSON(http.StatusCreated, items)
+	c.JSON(http.StatusOK, gin.H{"data": items})
 }

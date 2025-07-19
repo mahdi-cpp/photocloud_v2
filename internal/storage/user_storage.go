@@ -18,22 +18,24 @@ import (
 )
 
 type UserStorage struct {
-	config            Config
-	mu                sync.RWMutex // Protects all indexes and maps
-	user              model.User
-	assets            map[int]*model.PHAsset
-	albumManager      *CollectionManager[*model.Album]
-	tripManager       *CollectionManager[*model.Trip]
-	personManager     *CollectionManager[*model.Person]
-	pinnedManager     *CollectionManager[*model.Pinned]
-	metadata          *MetadataManager
-	thumbnail         *ThumbnailManager
-	lastID            int
-	lastRebuild       time.Time
-	maintenanceCtx    context.Context
-	cancelMaintenance context.CancelFunc
-	statsMu           sync.Mutex
-	stats             Stats
+	config             Config
+	mu                 sync.RWMutex // Protects all indexes and maps
+	user               model.User
+	assets             map[int]*model.PHAsset
+	AlbumManager       *CollectionManager[*model.Album]
+	TripManager        *CollectionManager[*model.Trip]
+	PersonManager      *CollectionManager[*model.Person]
+	PinnedManager      *CollectionManager[*model.Pinned]
+	CameraManager      *CollectionManager[*model.Camera]
+	SharedAlbumManager *CollectionManager[*model.SharedAlbum]
+	metadata           *MetadataManager
+	thumbnail          *ThumbnailManager
+	lastID             int
+	lastRebuild        time.Time
+	maintenanceCtx     context.Context
+	cancelMaintenance  context.CancelFunc
+	statsMu            sync.Mutex
+	stats              Stats
 }
 
 func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
@@ -125,12 +127,12 @@ func (us *UserStorage) GetAssetContent(id int) ([]byte, error) {
 	return os.ReadFile(assetPath)
 }
 
-func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (string, error) {
+func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
 
 	us.mu.Lock()
 	defer us.mu.Unlock()
 
-	for _, id := range assetIds {
+	for _, id := range update.AssetIds {
 
 		// Load current asset
 		//asset, err := us.metadata.LoadMetadata(id)
@@ -300,13 +302,14 @@ func (us *UserStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (st
 	}
 
 	// Merging strings with the integer ID
-	merged := fmt.Sprintf(" %s, %d:", "update assets count: ", len(assetIds))
+	merged := fmt.Sprintf(" %s, %d:", "update assets count: ", len(update.AssetIds))
 
 	return merged, nil
 }
 
-func (us *UserStorage) PrepareAlbums() {
+func (us *UserStorage) UpdateCollections() {
 	us.prepareAlbums()
+	us.prepareCameras()
 }
 
 func (us *UserStorage) GetSystemStats() Stats {
@@ -375,7 +378,7 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 
 func (us *UserStorage) prepareAlbums() {
 
-	items, err := us.albumManager.GetAll()
+	items, err := us.AlbumManager.GetAll()
 	if err != nil {
 	}
 
@@ -394,7 +397,108 @@ func (us *UserStorage) prepareAlbums() {
 			continue
 		}
 		album.Count = count
-		us.albumManager.itemAssets[album.ID] = assets
+		us.AlbumManager.itemAssets[album.ID] = assets
+	}
+}
+
+func (us *UserStorage) prepareTrips() {
+
+	items, err := us.TripManager.GetAll()
+	if err != nil {
+	}
+
+	for _, item := range items {
+
+		with := model.PHFetchOptions{
+			UserID:     1,
+			Trips:      []int{item.ID},
+			SortBy:     "modificationDate",
+			SortOrder:  "gg",
+			FetchLimit: 2,
+		}
+
+		assets, count, err := us.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		item.Count = count
+		us.TripManager.itemAssets[item.ID] = assets
+	}
+}
+
+func (us *UserStorage) preparePersons() {
+
+	items, err := us.PersonManager.GetAll()
+	if err != nil {
+	}
+
+	for _, item := range items {
+
+		with := model.PHFetchOptions{
+			UserID:     1,
+			Persons:    []int{item.ID},
+			SortBy:     "modificationDate",
+			SortOrder:  "gg",
+			FetchLimit: 2,
+		}
+
+		assets, count, err := us.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		item.Count = count
+		us.PersonManager.itemAssets[item.ID] = assets
+	}
+}
+
+func (us *UserStorage) prepareCameras() {
+
+	items, err := us.CameraManager.GetAll()
+	if err != nil {
+	}
+
+	for _, item := range items {
+
+		with := model.PHFetchOptions{
+			UserID:      1,
+			CameraMake:  item.CameraMake,
+			CameraModel: item.CameraModel,
+			SortBy:      "modificationDate",
+			SortOrder:   "gg",
+			FetchLimit:  6,
+		}
+
+		assets, count, err := us.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		item.Count = count
+		us.CameraManager.itemAssets[item.ID] = assets
+	}
+}
+
+func (us *UserStorage) preparePinned() {
+
+	items, err := us.AlbumManager.GetAll()
+	if err != nil {
+	}
+
+	for _, album := range items {
+
+		with := model.PHFetchOptions{
+			UserID:     4,
+			Albums:     []int{album.ID},
+			SortBy:     "modificationDate",
+			SortOrder:  "gg",
+			FetchLimit: 6,
+		}
+
+		assets, count, err := us.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		album.Count = count
+		us.PinnedManager.itemAssets[album.ID] = assets
 	}
 }
 
@@ -513,6 +617,44 @@ func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset]
 			for _, albumID := range with.Albums {
 				for _, assetAlbumID := range asset.Albums {
 					if assetAlbumID == albumID {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+
+		// Trip filtering
+		if len(with.Trips) > 0 {
+			found := false
+			for _, tripID := range with.Trips {
+				for _, assetTripID := range asset.Trips {
+					if assetTripID == tripID {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+
+		// Person filtering
+		if len(with.Persons) > 0 {
+			found := false
+			for _, personID := range with.Persons {
+				for _, assetPersonID := range asset.Persons {
+					if assetPersonID == personID {
 						found = true
 						break
 					}

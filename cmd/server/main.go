@@ -98,15 +98,25 @@ func main() {
 	userHandler := handler.NewUserHandler(userStorageManager)
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
-	//systemHandler := handler.NewSystemHandler(userStorageManager)
 
 	albumHandler := handler.NewAlbumHandler(userStorageManager)
 	tripHandler := handler.NewTripHandler(userStorageManager)
 	personHandler := handler.NewPersonsHandler(userStorageManager)
 	pinnedHandler := handler.NewPinnedHandler(userStorageManager)
+	cameraHandler := handler.NewCameraHandler(userStorageManager)
+	sharedAlbumHandler := handler.NewSharedAlbumHandler(userStorageManager)
 
 	// Handler Gin router
-	router := createRouter(cfg, userHandler, assetHandler, albumHandler, tripHandler, personHandler, searchHandler, pinnedHandler)
+	router := createRouter(cfg,
+		userHandler,
+		assetHandler,
+		albumHandler,
+		sharedAlbumHandler,
+		tripHandler,
+		personHandler,
+		searchHandler,
+		pinnedHandler,
+		cameraHandler)
 
 	// Start server
 	startServer(cfg, router)
@@ -157,10 +167,12 @@ func createRouter(
 	userHandler *handler.UserHandler,
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
+	sharedAlbumHandler *handler.SharedAlbumHandler,
 	tripHandler *handler.TripHandler,
 	personHandler *handler.PersonHandler,
 	searchHandler *handler.SearchHandler,
 	pinnedHandler *handler.PinnedHandler,
+	cameraHandler *handler.CameraHandler,
 ) *gin.Engine {
 	// Set Gin mode
 	gin.SetMode(cfg.Server.Mode)
@@ -186,6 +198,7 @@ func createRouter(
 		api.POST("/assets/update", assetHandler.Update)
 		api.POST("/assets/delete", assetHandler.Delete)
 		api.POST("/assets/filters", assetHandler.Filters)
+
 		api.GET("/assets/download/:filename", assetHandler.OriginalDownload)
 		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
 		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
@@ -193,23 +206,32 @@ func createRouter(
 		api.POST("/album/create", albumHandler.Create)
 		api.POST("/album/update", albumHandler.Update)
 		api.POST("/album/delete", albumHandler.Delete)
-		api.POST("/album/getList", albumHandler.GetCollectionList)
-		api.POST("/album/getListV2", albumHandler.GetListV2)
+		api.POST("/album/list", albumHandler.GetListV2)
+
+		api.POST("/shared_album/create", sharedAlbumHandler.Create)
+		api.POST("/shared_album/update", sharedAlbumHandler.Update)
+		api.POST("/shared_album/delete", sharedAlbumHandler.Delete)
+		api.POST("/shared_album/list", sharedAlbumHandler.GetList)
 
 		api.POST("/trip/create", tripHandler.Create)
 		api.POST("/trip/update", tripHandler.Update)
 		api.POST("/trip/delete", tripHandler.Delete)
-		api.POST("/trip/getList", tripHandler.GetCollectionList)
+		api.POST("/trip/list", tripHandler.GetCollectionList)
 
 		api.POST("/person/create", personHandler.Create)
 		api.POST("/person/update", personHandler.Update)
 		api.POST("/person/delete", personHandler.Delete)
-		api.POST("/person/getList", personHandler.GetCollectionList)
+		api.POST("/person/list", personHandler.GetCollectionList)
 
 		api.POST("/pinned/create", pinnedHandler.Create)
 		api.POST("/pinned/update", pinnedHandler.Update)
 		api.POST("/pinned/delete", pinnedHandler.Delete)
-		api.POST("/pinned/getList", pinnedHandler.GetCollectionList)
+		api.POST("/pinned/list", pinnedHandler.GetList)
+
+		api.POST("/camera/create", cameraHandler.Create)
+		api.POST("/camera/update", cameraHandler.Update)
+		api.POST("/camera/delete", cameraHandler.Delete)
+		api.POST("/camera/list", cameraHandler.GetList)
 
 		//api.PUT("/assets/:id", assetHandler.Update)
 		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)

@@ -2,12 +2,12 @@ package model
 
 import "time"
 
-func (a *Album) GetID() int                      { return a.ID }
-func (a *Album) SetID(id int)                    { a.ID = id }
-func (a *Album) SetCreationDate(t time.Time)     { a.CreationDate = t }
-func (a *Album) SetModificationDate(t time.Time) { a.ModificationDate = t }
+func (a *SharedAlbum) GetID() int                      { return a.ID }
+func (a *SharedAlbum) SetID(id int)                    { a.ID = id }
+func (a *SharedAlbum) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *SharedAlbum) SetModificationDate(t time.Time) { a.ModificationDate = t }
 
-type Album struct {
+type SharedAlbum struct {
 	ID               int       `json:"id"`
 	Name             string    `json:"name"`
 	AlbumType        string    `json:"albumType"`
@@ -18,7 +18,7 @@ type Album struct {
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
-type AlbumHandler struct {
+type SharedAlbumHandler struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
 	AlbumType    string `json:"albumType,omitempty"`
@@ -26,7 +26,7 @@ type AlbumHandler struct {
 	IsHidden     *bool  `json:"isHidden,omitempty"`
 }
 
-func UpdateAlbum(album *Album, handler AlbumHandler) *Album {
+func UpdateSharedAlbum(album *SharedAlbum, handler SharedAlbumHandler) *SharedAlbum {
 
 	if handler.Name != "" {
 		album.Name = handler.Name

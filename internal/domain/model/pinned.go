@@ -10,16 +10,16 @@ func (a *Pinned) SetModificationDate(t time.Time) { a.ModificationDate = t }
 type Pinned struct {
 	ID               int       `json:"id"`
 	Name             string    `json:"name"`
+	Icon             string    `json:"icon"`
 	Count            int       `json:"count"`
-	IsCollection     bool      `json:"isCollection"`
 	CreationDate     time.Time `json:"creationDate"`
 	ModificationDate time.Time `json:"modificationDate"`
 }
 
 type PinnedHandler struct {
-	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
+	Icon         string `json:"icon,omitempty"`
 	IsCollection *bool  `json:"isCollection,omitempty"`
 	IsHidden     *bool  `json:"isHidden,omitempty"`
 }
@@ -30,8 +30,8 @@ func UpdatePinned(pinned *Pinned, handler PinnedHandler) *Pinned {
 		pinned.Name = handler.Name
 	}
 
-	if handler.IsCollection != nil {
-		pinned.IsCollection = *handler.IsCollection
+	if handler.Icon != "" {
+		pinned.Icon = handler.Icon
 	}
 
 	return pinned

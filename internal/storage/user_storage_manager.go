@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,33 +13,10 @@ import (
 	"time"
 )
 
-// Config defines storage system configuration
-type Config struct {
-	AppDir               string
-	AssetsDir            string
-	MetadataDir          string
-	ThumbnailsDir        string
-	IndexFile            string
-	CacheSize            int
-	MaxUploadSize        int64
-	AlbumCollectionFile  string
-	TripCollectionFile   string
-	PersonCollectionFile string
-}
-
-// Stats holds storage system statistics
-type Stats struct {
-	TotalAssets   int
-	CacheHits     int64
-	CacheMisses   int64
-	Uploads24h    int
-	ThumbnailsGen int
-}
-
 type UserStorageManager struct {
 	mu                  sync.RWMutex
-	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
 	config              Config
+	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
 	userManager         *CollectionManager[*model.User]
 	originalImageLoader *image_loader.ImageLoader
 	tinyImageLoader     *image_loader.ImageLoader
@@ -89,7 +65,111 @@ func (us *UserStorageManager) loadAllIcons() {
 	}
 }
 
-func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*UserStorage, error) {
+//func (us *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
+//
+//	userStorage, err := us.GetUserStorage(c, userID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return userStorage.UploadAsset(userID, file, header)
+//}
+
+//func (us *UserStorageManager) FetchAssets(c *gin.Context, with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+//
+//	userStorage, err := us.GetUserStorage(c, with.UserID)
+//	if err != nil {
+//		return nil, 0, err
+//	}
+//
+//	return userStorage.FetchAssets(with)
+//}
+
+func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
+	userStorage, err := us.GetUserStorage(c, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return userStorage.PersonManager, nil
+}
+
+//func (us *UserStorageManager) UpdateAsset(c *gin.Context, assetIds []int, update model.AssetUpdate) (string, error) {
+//	userStorage, err := us.GetUserStorage(c, update.UserID)
+//	if err != nil {
+//		return "", err
+//	}
+//
+//	return userStorage.UpdateAsset(assetIds, update)
+//}
+
+//func (us *UserStorageManager) Prepare(c *gin.Context, update model.AssetUpdate) {
+//	userStorage, err := us.GetUserStorage(c, update.UserID)
+//	if err != nil {
+//		return
+//	}
+//
+//	userStorage.UpdateCollections()
+//}
+
+//func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (*model.PHAsset, bool) {
+//	userStorage, err := us.GetUserStorage(c, userId)
+//	if err != nil {
+//		return nil, false
+//	}
+//
+//	return userStorage.GetAsset(assetId)
+//}
+
+//func (us *UserStorageManager) Delete(c *gin.Context, userId int, assetId int) error {
+//	userStorage, err := us.GetUserStorage(c, userId)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return userStorage.DeleteAsset(assetId)
+//}
+
+// periodicMaintenance runs background tasks
+func (us *UserStorageManager) periodicMaintenance() {
+
+	saveTicker := time.NewTicker(10 * time.Second)
+	statsTicker := time.NewTicker(30 * time.Minute)
+	rebuildTicker := time.NewTicker(24 * time.Hour)
+	cleanupTicker := time.NewTicker(1 * time.Hour)
+
+	for {
+		select {
+		case <-saveTicker.C:
+			fmt.Println("saveTicker")
+		case <-rebuildTicker.C:
+			fmt.Println("rebuildTicker")
+		case <-statsTicker.C:
+			fmt.Println("statsTicker")
+		case <-cleanupTicker.C:
+			fmt.Println("cleanupTicker")
+		}
+	}
+}
+
+//----------------------------------------------------------------------------------------
+
+func (us *UserStorageManager) RepositoryGetOriginalImage(filename string) ([]byte, error) {
+	return us.originalImageLoader.LoadImage(us.ctx, filename)
+}
+
+func (us *UserStorageManager) RepositoryGetTinyImage(filename string) ([]byte, error) {
+	return us.tinyImageLoader.LoadImage(us.ctx, filename)
+}
+
+func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
+	return us.iconLoader.LoadImage(us.ctx, filename)
+}
+
+//-----------------------------------------------------------------------------------------
+
+func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserStorage, error) {
+
 	us.mu.Lock()
 	defer us.mu.Unlock()
 
@@ -149,27 +229,41 @@ func (us *UserStorageManager) GetStorageForUser(c *gin.Context, userID int) (*Us
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.albumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
+	userStorage.AlbumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.tripManager, err = NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
+	userStorage.SharedAlbumManager, err = NewCollectionManager[*model.SharedAlbum]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/shared_albums.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.personManager, err = NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
+	userStorage.TripManager, err = NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.pinnedManager, err = NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
+	userStorage.PersonManager, err = NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
+	if err != nil {
+		panic(err)
+	}
+
+	userStorage.PinnedManager, err = NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
+	if err != nil {
+		panic(err)
+	}
+
+	userStorage.CameraManager, err = NewCollectionManager[*model.Camera]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/camera.json")
 	if err != nil {
 		panic(err)
 	}
 
 	userStorage.prepareAlbums()
+	userStorage.prepareTrips()
+	userStorage.preparePersons()
+	userStorage.prepareCameras()
+	userStorage.preparePinned()
 
 	// Store the new userStorage
 	us.storages[userID] = userStorage
@@ -193,130 +287,38 @@ func (us *UserStorageManager) GetUserManager() (*CollectionManager[*model.User],
 	return us.userManager, nil
 }
 
-func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
-	userStorage, err := us.GetStorageForUser(c, userID)
-	if err != nil {
-		return nil, err
-	}
+//func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
+//	userStorage, err := us.GetUserStorage(c, userID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return userStorage.AlbumManager, nil
+//}
 
-	return userStorage.albumManager, nil
-}
-
-func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*CollectionManager[*model.Trip], error) {
-	userStorage, err := us.GetStorageForUser(c, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return userStorage.tripManager, nil
-}
+//func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*CollectionManager[*model.Trip], error) {
+//	userStorage, err := us.GetUserStorage(c, userID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return userStorage.TripManager, nil
+//}
 
 func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
-	userStorage, err := us.GetStorageForUser(c, userID)
+	userStorage, err := us.GetUserStorage(c, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return userStorage.personManager, nil
+	return userStorage.PersonManager, nil
 }
 
 func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*CollectionManager[*model.Pinned], error) {
-	userStorage, err := us.GetStorageForUser(c, userID)
+	userStorage, err := us.GetUserStorage(c, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return userStorage.pinnedManager, nil
-}
-
-func (us *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
-
-	userStorage, err := us.GetStorageForUser(c, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return userStorage.UploadAsset(userID, file, header)
-}
-
-func (us *UserStorageManager) FetchAssets(c *gin.Context, with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
-
-	userStorage, err := us.GetStorageForUser(c, with.UserID)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return userStorage.FetchAssets(with)
-}
-
-func (us *UserStorageManager) UpdateAsset(c *gin.Context, assetIds []int, update model.AssetUpdate) (string, error) {
-	userStorage, err := us.GetStorageForUser(c, update.UserID)
-	if err != nil {
-		return "", err
-	}
-
-	return userStorage.UpdateAsset(assetIds, update)
-}
-
-func (us *UserStorageManager) Prepare(c *gin.Context, update model.AssetUpdate) {
-	userStorage, err := us.GetStorageForUser(c, update.UserID)
-	if err != nil {
-		return
-	}
-
-	userStorage.PrepareAlbums()
-}
-
-func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (*model.PHAsset, bool) {
-	userStorage, err := us.GetStorageForUser(c, userId)
-	if err != nil {
-		return nil, false
-	}
-
-	return userStorage.GetAsset(assetId)
-}
-
-func (us *UserStorageManager) Delete(c *gin.Context, userId int, assetId int) error {
-	userStorage, err := us.GetStorageForUser(c, userId)
-	if err != nil {
-		return err
-	}
-
-	return userStorage.DeleteAsset(assetId)
-}
-
-// periodicMaintenance runs background tasks
-func (us *UserStorageManager) periodicMaintenance() {
-
-	saveTicker := time.NewTicker(10 * time.Second)
-	statsTicker := time.NewTicker(30 * time.Minute)
-	rebuildTicker := time.NewTicker(24 * time.Hour)
-	cleanupTicker := time.NewTicker(1 * time.Hour)
-
-	for {
-		select {
-		case <-saveTicker.C:
-			fmt.Println("saveTicker")
-		case <-rebuildTicker.C:
-			fmt.Println("rebuildTicker")
-		case <-statsTicker.C:
-			fmt.Println("statsTicker")
-		case <-cleanupTicker.C:
-			fmt.Println("cleanupTicker")
-		}
-	}
-}
-
-//----------------------------------------------------------------------------------------
-
-func (us *UserStorageManager) RepositoryGetOriginalImage(filename string) ([]byte, error) {
-	return us.originalImageLoader.LoadImage(us.ctx, filename)
-}
-
-func (us *UserStorageManager) RepositoryGetTinyImage(filename string) ([]byte, error) {
-	return us.tinyImageLoader.LoadImage(us.ctx, filename)
-}
-
-func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
-	return us.iconLoader.LoadImage(us.ctx, filename)
+	return userStorage.PinnedManager, nil
 }

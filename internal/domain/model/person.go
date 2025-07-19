@@ -17,7 +17,6 @@ type Person struct {
 }
 
 type PersonHandler struct {
-	UserID       int    `json:"userID"`
 	ID           int    `json:"id"`
 	Name         string `json:"name,omitempty"`
 	IsCollection *bool  `json:"IsCollection,omitempty"`

@@ -23,17 +23,14 @@ type CollectionManager[T CollectionItem] struct {
 	metadata   *MetadataControl[[]T]
 	items      *registery.Registry[T]
 	itemAssets map[int][]*model.PHAsset
-	//parent     *UserStorage
 }
 
 func NewCollectionManager[T CollectionItem](path string) (*CollectionManager[T], error) {
-	fmt.Println("NewCollectionManager")
 
 	manager := &CollectionManager[T]{
 		items:      registery.NewRegistry[T](),
 		metadata:   NewMetadataControl[[]T](path),
 		itemAssets: make(map[int][]*model.PHAsset),
-		//parent:     parent,
 	}
 
 	items, err := manager.load()
@@ -83,10 +80,6 @@ func (manager *CollectionManager[T]) Create(newItem T) (T, error) {
 
 		return nil
 	})
-
-	//if err == nil {
-	//	manager.parent.prepareAlbums()
-	//}
 
 	return newItem, err
 }

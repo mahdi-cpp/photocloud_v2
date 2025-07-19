@@ -16,18 +16,27 @@ func NewSearchHandler(userStorageManager *storage.UserStorageManager) *SearchHan
 	return &SearchHandler{userStorageManager: userStorageManager}
 }
 
-func (h *SearchHandler) Filters(c *gin.Context) {
+func (handler *SearchHandler) Filters(c *gin.Context) {
 
-	var filters model.PHFetchOptions
-	if err := c.ShouldBindJSON(&filters); err != nil {
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	var with model.PHFetchOptions
+	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
 		return
 	}
 
-	fmt.Println("Filters userId: ", filters.UserID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
 
-	items, total, err := h.userStorageManager.FetchAssets(c, filters)
+	items, total, err := userStorage.FetchAssets(with)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
@@ -44,15 +53,26 @@ func (h *SearchHandler) Filters(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func (h *SearchHandler) Search(c *gin.Context) {
+func (handler *SearchHandler) Search(c *gin.Context) {
 
-	var filters model.PHFetchOptions
-	if err := c.ShouldBindJSON(&filters); err != nil {
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	var with model.PHFetchOptions
+	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	items, total, err := h.userStorageManager.FetchAssets(c, filters)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	items, total, err := userStorage.FetchAssets(with)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return

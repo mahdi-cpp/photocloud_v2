@@ -15,6 +15,7 @@ type PHAsset struct {
 	UserID    int       `json:"userId"`
 	Url       string    `json:"url"`
 	Filename  string    `json:"filename"`
+	Format    string    `json:"format"`
 	MediaType MediaType `json:"mediaType"`
 
 	PixelWidth  int `json:"pixelWidth"`
@@ -85,8 +86,8 @@ type PHFetchOptions struct {
 }
 
 type AssetUpdate struct {
-	UserID      int     `json:"userID"`
-	AssetIds    []int   `json:"assetIds,omitempty"` // Asset Ids
+	AssetIds []int `json:"assetIds,omitempty"` // Asset Ids
+
 	Filename    *string `json:"filename,omitempty"`
 	CameraMake  *string `json:"cameraMake,omitempty"`
 	CameraModel *string `json:"cameraModel,omitempty"`
@@ -109,7 +110,6 @@ type AssetUpdate struct {
 }
 
 type AssetDelete struct {
-	UserID  int `json:"userID"`
 	AssetID int `json:"assetID"`
 }
 
@@ -121,17 +121,3 @@ type PHFetchResult[T any] struct {
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 }
-
-//func NewPHFetchResult[T any](
-//	items []T,
-//	total int,
-//	limit int,
-//	offset int,
-//) *PHFetchResult[T] {
-//	return &PHFetchResult[T]{
-//		Item:  items,
-//		Total:  total,
-//		Limit:  limit,
-//		Offset: offset,
-//	}
-//}

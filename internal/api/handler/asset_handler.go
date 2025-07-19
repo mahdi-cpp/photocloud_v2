@@ -22,9 +22,14 @@ func NewAssetHandler(userStorageManager *storage.UserStorageManager) *AssetHandl
 	return &AssetHandler{userStorageManager: userStorageManager}
 }
 
-func (h *AssetHandler) Upload(c *gin.Context) {
+func (handler *AssetHandler) Upload(c *gin.Context) {
 
-	userID := c.GetInt("userID")
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "File upload error"})
@@ -38,13 +43,18 @@ func (h *AssetHandler) Upload(c *gin.Context) {
 		Filename: header.Filename,
 	}
 
-	asset, err = h.userStorageManager.UploadAsset(c, asset.UserID, file, header)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	asset, err = userStorage.UploadAsset(asset.UserID, file, header)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 		return
 	}
 
-	//asset, err := h.userStorageManager.Upload(c, userID, file, header)
+	//asset, err := handler.userStorageManager.Upload(c, userID, file, header)
 	//if err != nil {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
 	//	return
@@ -53,9 +63,15 @@ func (h *AssetHandler) Upload(c *gin.Context) {
 	c.JSON(http.StatusCreated, asset)
 }
 
-func (h *AssetHandler) Update(c *gin.Context) {
+func (handler *AssetHandler) Update(c *gin.Context) {
 
 	startTime := time.Now()
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
 
 	var update model.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
@@ -63,15 +79,18 @@ func (h *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("Update: ", update.AssetIds)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
 
-	asset, err := h.userStorageManager.UpdateAsset(c, update.AssetIds, update)
+	asset, err := userStorage.UpdateAsset(update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.userStorageManager.Prepare(c, update)
+	userStorage.UpdateCollections()
 
 	// Log performance
 	duration := time.Since(startTime)
@@ -80,7 +99,14 @@ func (h *AssetHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusCreated, asset)
 }
 
-func (h *AssetHandler) Get(c *gin.Context) {
+func (handler *AssetHandler) Get(c *gin.Context) {
+
+	userIDStr := c.Query("userID")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -88,7 +114,12 @@ func (h *AssetHandler) Get(c *gin.Context) {
 		return
 	}
 
-	asset, exists := h.userStorageManager.GetAsset(c, 4, id)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	asset, exists := userStorage.GetAsset(id)
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Asset not found"})
 		return
@@ -97,9 +128,14 @@ func (h *AssetHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, asset)
 }
 
-func (h *AssetHandler) Search(c *gin.Context) {
+func (handler *AssetHandler) Search(c *gin.Context) {
 
-	userID := c.GetInt("userID")
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	query := c.Query("query")
 	mediaType := c.Query("type")
 
@@ -131,7 +167,7 @@ func (h *AssetHandler) Search(c *gin.Context) {
 	//assets, _, err := s.repo.Search(ctx, filters)
 	//return assets, err
 
-	//assets, _, err := h.userStorageManager.Search(c, filters)
+	//assets, _, err := handler.userStorageManager.Search(c, filters)
 	//if err != nil {
 	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 	//	return
@@ -140,7 +176,14 @@ func (h *AssetHandler) Search(c *gin.Context) {
 	//c.JSON(http.StatusOK, assets)
 }
 
-func (h *AssetHandler) Delete(c *gin.Context) {
+func (handler *AssetHandler) Delete(c *gin.Context) {
+
+	userIDStr := c.Query("userID")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
 
 	var request model.AssetDelete
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -148,7 +191,12 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err := h.userStorageManager.Delete(c, request.UserID, request.AssetID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	err = userStorage.DeleteAsset(request.AssetID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -157,20 +205,34 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, "successful delete asset with id: "+strconv.Itoa(request.AssetID))
 }
 
-func (h *AssetHandler) Filters(c *gin.Context) {
+func (handler *AssetHandler) Filters(c *gin.Context) {
 
-	var filters model.PHFetchOptions
-	if err := c.ShouldBindJSON(&filters); err != nil {
+	fmt.Println("Filters 1")
+
+	userID, err := getUserId(c)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	fmt.Println("Filters")
+
+	var with model.PHFetchOptions
+	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
 		return
 	}
 
-	fmt.Println("Filters userId: ", filters.UserID)
-
-	items, total, err := h.userStorageManager.FetchAssets(c, filters)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	items, total, err := userStorage.FetchAssets(with)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed user FetchAssets"})
 		return
 	}
 
@@ -188,7 +250,7 @@ func (h *AssetHandler) Filters(c *gin.Context) {
 
 //----------------------------------------
 
-func (h *AssetHandler) OriginalDownload(c *gin.Context) {
+func (handler *AssetHandler) OriginalDownload(c *gin.Context) {
 
 	filename := c.Param("filename")
 	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", filename)
@@ -201,7 +263,7 @@ func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 
 	filepathTiny := filepath.Join("mahdi_abdolmaleki/assets", filename)
 
-	imgData, err := h.userStorageManager.RepositoryGetOriginalImage(filepathTiny)
+	imgData, err := handler.userStorageManager.RepositoryGetOriginalImage(filepathTiny)
 	if err != nil {
 		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
@@ -217,11 +279,11 @@ func (h *AssetHandler) OriginalDownload(c *gin.Context) {
 	c.File(filepath2)
 }
 
-func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
+func (handler *AssetHandler) TinyImageDownload(c *gin.Context) {
 
 	filename := c.Param("filename")
 	if strings.Contains(filename, "png") {
-		imgData, err := h.userStorageManager.RepositoryGetIcon(filename)
+		imgData, err := handler.userStorageManager.RepositoryGetIcon(filename)
 		if err != nil {
 			fmt.Println("icon read error: ", err.Error())
 		} else {
@@ -232,7 +294,7 @@ func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
 
 	filepathTiny := filepath.Join("mahdi_abdolmaleki/thumbnails", filename)
 
-	imgData, err := h.userStorageManager.RepositoryGetTinyImage(filepathTiny)
+	imgData, err := handler.userStorageManager.RepositoryGetTinyImage(filepathTiny)
 	if err != nil {
 		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
@@ -240,9 +302,9 @@ func (h *AssetHandler) TinyImageDownload(c *gin.Context) {
 	}
 }
 
-func (h *AssetHandler) IconDownload(c *gin.Context) {
+func (handler *AssetHandler) IconDownload(c *gin.Context) {
 	filename := c.Param("filename")
-	imgData, err := h.userStorageManager.RepositoryGetTinyImage(filename)
+	imgData, err := handler.userStorageManager.RepositoryGetTinyImage(filename)
 	if err != nil {
 		c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
 	}

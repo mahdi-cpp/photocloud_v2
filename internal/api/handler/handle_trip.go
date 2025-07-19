@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
@@ -19,19 +20,31 @@ func NewTripHandler(userStorageManager *storage.UserStorageManager) *TripHandler
 }
 
 func (handler *TripHandler) Create(c *gin.Context) {
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var item model.Trip
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	//collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	//	return
+	//}
+
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	item2, err := collectionManager.Create(&item)
+	item2, err := userStorage.TripManager.Create(&item)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -42,25 +55,37 @@ func (handler *TripHandler) Create(c *gin.Context) {
 
 func (handler *TripHandler) Update(c *gin.Context) {
 
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var itemHandler model.TripHandler
 	if err := c.ShouldBindJSON(&itemHandler); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetTripManager(c, itemHandler.UserID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	item, err := collectionManager.Get(itemHandler.ID)
+	//collectionManager, err := handler.userStorageManager.GetTripManager(c, userID)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	//	return
+	//}
+
+	item, err := userStorage.TripManager.Get(itemHandler.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
+
 	model.UpdateTrip(item, itemHandler)
 
-	item2, err := collectionManager.Update(item)
+	item2, err := userStorage.TripManager.Update(item)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -70,19 +95,31 @@ func (handler *TripHandler) Update(c *gin.Context) {
 }
 
 func (handler *TripHandler) Delete(c *gin.Context) {
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
 	var item model.Trip
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	err = collectionManager.Delete(item.ID)
+	//collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	//	return
+	//}
+
+	err = userStorage.TripManager.Delete(item.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -93,17 +130,29 @@ func (handler *TripHandler) Delete(c *gin.Context) {
 
 func (handler *TripHandler) GetCollectionList(c *gin.Context) {
 
-	collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	fmt.Println("Trip 0")
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	fmt.Println("Trip 1")
+
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	items, err := collectionManager.GetAll()
+	items, err := userStorage.TripManager.GetAll()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
+
+	fmt.Println("Trip 2")
 
 	// Create collection list without interface constraint
 	result := model.PHCollectionList[*model.Trip]{
@@ -111,26 +160,40 @@ func (handler *TripHandler) GetCollectionList(c *gin.Context) {
 	}
 
 	for i, item := range items {
-		assets, _ := collectionManager.GetItemAssets(item.ID)
+		assets, _ := userStorage.TripManager.GetItemAssets(item.ID)
 		result.Collections[i] = &model.PHCollection[*model.Trip]{
 			Item:   item,
 			Assets: assets,
 		}
 	}
 
-	c.JSON(http.StatusOK, result)
+	fmt.Println("Trip 3")
+
+	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
 func (handler *TripHandler) GetCollectionListWith(c *gin.Context) {
 
-	collectionManager, err := handler.userStorageManager.GetTripManager(c, 4)
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
+	//collectionManager, err := userStorage.TripManager.GetAll()
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	//	return
+	//}
+
 	// Get only visible items
-	items, err := collectionManager.GetList(func(a *model.Trip) bool {
+	items, err := userStorage.TripManager.GetList(func(a *model.Trip) bool {
 		return !a.IsCollection
 	})
 	if err != nil {
