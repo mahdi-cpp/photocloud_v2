@@ -5,7 +5,6 @@ import (
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"net/http"
-	"strconv"
 )
 
 type PersonHandler struct {
@@ -26,25 +25,36 @@ func (handler *PersonHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var item model.Person
-	if err := c.ShouldBindJSON(&item); err != nil {
+	var request model.CollectionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error GetPersonManager": err})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	newItem, err := userStorage.PersonManager.Create(&model.Person{Title: request.Title})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	item2, err := collectionManager.Create(&item)
+	update := model.AssetUpdate{AssetIds: request.AssetIds, AddPersons: []int{newItem.ID}}
+	_, err = userStorage.UpdateAsset(update)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error 2": err})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, item2)
+	userStorage.UpdateCollections()
+
+	c.JSON(http.StatusCreated, model.CollectionResponse{
+		ID:    newItem.ID,
+		Title: newItem.Title,
+	})
 }
 
 func (handler *PersonHandler) Update(c *gin.Context) {
@@ -61,19 +71,19 @@ func (handler *PersonHandler) Update(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	item, err := collectionManager.Get(itemHandler.ID)
+	item, err := userStorage.PersonManager.Get(itemHandler.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
+
 	model.UpdatePerson(item, itemHandler)
 
-	item2, err := collectionManager.Update(item)
+	item2, err := userStorage.PersonManager.Update(item)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -96,48 +106,44 @@ func (handler *PersonHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	err = userStorage.PersonManager.Delete(item.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	err = collectionManager.Delete(item.ID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(http.StatusCreated, "Delete item with id:"+strconv.Itoa(item.ID))
+	c.JSON(http.StatusCreated, "delete ok")
 }
 
 func (handler *PersonHandler) GetCollectionList(c *gin.Context) {
-
 	userID, err := getUserId(c)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "userID must be an integer"})
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	items, err := userStorage.PersonManager.GetAllSorted("creationDate", "1asc")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	items, err := collectionManager.GetAll()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
-	}
-
-	// Create collection list without interface constraint
 	result := model.PHCollectionList[*model.Person]{
 		Collections: make([]*model.PHCollection[*model.Person], len(items)),
 	}
 
 	for i, item := range items {
-		assets, _ := collectionManager.GetItemAssets(item.ID)
+		assets, _ := userStorage.PersonManager.GetItemAssets(item.ID)
 		result.Collections[i] = &model.PHCollection[*model.Person]{
 			Item:   item,
 			Assets: assets,
@@ -155,14 +161,13 @@ func (handler *PersonHandler) GetCollectionListWith(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPersonManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
 	// Get only visible items
-	items, err := collectionManager.GetList(func(a *model.Person) bool {
+	items, err := userStorage.PersonManager.GetList(func(a *model.Person) bool {
 		return !a.IsCollection
 	})
 	if err != nil {

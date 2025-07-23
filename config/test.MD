@@ -19,7 +19,26 @@
     "fetchLimit": 10
   },
 
-  {"userID":4, "assetIds":[50,51], "addAlbums":[1]}
+  {
+    "assetIds": [
+      50,
+      51
+    ],
+    "addAlbums": [
+      1
+    ]
+  },
+
+  {
+    "assetIds": [
+      21,
+      23
+    ],
+    "cameraMake": "Samsong",
+    "cameraModel": "Galaxy A5"
+  }
+  
+  
 ]
 ```
 

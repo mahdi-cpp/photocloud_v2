@@ -6,6 +6,8 @@ func (a *SharedAlbum) GetID() int                      { return a.ID }
 func (a *SharedAlbum) SetID(id int)                    { a.ID = id }
 func (a *SharedAlbum) SetCreationDate(t time.Time)     { a.CreationDate = t }
 func (a *SharedAlbum) SetModificationDate(t time.Time) { a.ModificationDate = t }
+func (a *SharedAlbum) GetCreationDate() time.Time      { return a.CreationDate }
+func (a *SharedAlbum) GetModificationDate() time.Time  { return a.ModificationDate }
 
 type SharedAlbum struct {
 	ID               int       `json:"id"`

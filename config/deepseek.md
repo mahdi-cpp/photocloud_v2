@@ -9,3 +9,9 @@ https://chat.deepseek.com/a/chat/s/697d90de-d1f8-49f7-b049-cdc8d3661962
 ## Image loading, lru ----------------------------------------
 https://chat.deepseek.com/a/chat/s/5f0242a7-4635-4f65-9841-5e2a1d67920c
 
+
+## golang tutorial 
+https://chat.deepseek.com/a/chat/s/3f303ede-2555-4166-8507-1fe60d7a8b5b
+
+## Update & Migration
+https://chat.deepseek.com/a/chat/s/b58179c8-775e-4711-bf70-7d895cbae548

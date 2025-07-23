@@ -25,8 +25,8 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var item model.Album
-	if err := c.ShouldBindJSON(&item); err != nil {
+	var request model.CollectionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
@@ -36,13 +36,25 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	item2, err := userStorage.AlbumManager.Create(&item)
+	newItem, err := userStorage.AlbumManager.Create(&model.Album{Title: request.Title})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	c.JSON(http.StatusCreated, item2)
+	update := model.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
+	_, err = userStorage.UpdateAsset(update)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userStorage.UpdateCollections()
+
+	c.JSON(http.StatusCreated, model.CollectionResponse{
+		ID:    newItem.ID,
+		Title: newItem.Title,
+	})
 }
 
 func (handler *AlbumHandler) Update(c *gin.Context) {
@@ -143,7 +155,7 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	items, err := userStorage.AlbumManager.GetAll()
+	items, err := userStorage.AlbumManager.GetAllSorted("creationDate", "1asc")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

@@ -25,6 +25,7 @@ type PHAsset struct {
 	CameraModel string    `json:"cameraModel"`
 	Location    []float64 `json:"location"` // [latitude:longitude]
 
+	IsCamera     bool `json:"isCamera"`
 	IsFavorite   bool `json:"isFavorite"`
 	IsScreenshot bool `json:"isScreenshot"`
 	IsHidden     bool `json:"isHidden"`
@@ -62,6 +63,7 @@ type PHFetchOptions struct {
 	StartDate *time.Time
 	EndDate   *time.Time
 
+	IsCamera      *bool
 	IsFavorite    *bool
 	IsScreenshot  *bool
 	IsHidden      *bool

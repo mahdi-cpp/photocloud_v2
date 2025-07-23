@@ -6,6 +6,8 @@ func (a *User) GetID() int                      { return a.ID }
 func (a *User) SetID(id int)                    { a.ID = id }
 func (a *User) SetCreationDate(t time.Time)     { a.CreationDate = t }
 func (a *User) SetModificationDate(t time.Time) { a.ModificationDate = t }
+func (a *User) GetCreationDate() time.Time      { return a.CreationDate }
+func (a *User) GetModificationDate() time.Time  { return a.ModificationDate }
 
 type User struct {
 	ID               int       `json:"id"`

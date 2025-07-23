@@ -2,10 +2,12 @@ package model
 
 import "time"
 
-func (c *Camera) GetID() int                      { return c.ID }
-func (c *Camera) SetID(id int)                    { c.ID = id }
-func (c *Camera) SetCreationDate(t time.Time)     { c.CreationDate = t }
-func (c *Camera) SetModificationDate(t time.Time) { c.ModificationDate = t }
+func (a *Camera) GetID() int                      { return a.ID }
+func (a *Camera) SetID(id int)                    { a.ID = id }
+func (a *Camera) SetCreationDate(t time.Time)     { a.CreationDate = t }
+func (a *Camera) SetModificationDate(t time.Time) { a.ModificationDate = t }
+func (a *Camera) GetCreationDate() time.Time      { return a.CreationDate }
+func (a *Camera) GetModificationDate() time.Time  { return a.ModificationDate }
 
 type Camera struct {
 	ID               int       `json:"id"`

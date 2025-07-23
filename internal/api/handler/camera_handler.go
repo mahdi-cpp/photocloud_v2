@@ -121,7 +121,7 @@ func (handler *CameraHandler) GetList(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	items, err := userStorage.CameraManager.GetAll()
+	items, err := userStorage.CameraManager.GetAllSorted("creationDate", "a2sc")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

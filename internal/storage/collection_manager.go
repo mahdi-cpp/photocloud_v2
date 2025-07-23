@@ -1,5 +1,7 @@
 package storage
 
+// https://chat.deepseek.com/a/chat/s/9b010f32-b23d-4f9b-ae0c-31a9b2c9408c
+
 import (
 	"errors"
 	"fmt"
@@ -16,6 +18,8 @@ type CollectionItem interface {
 	SetID(int)
 	SetCreationDate(time.Time)
 	SetModificationDate(time.Time)
+	GetCreationDate() time.Time     // Added for sorting
+	GetModificationDate() time.Time // Added for sorting
 }
 
 // CollectionManager manages any type of collection items
@@ -23,6 +27,12 @@ type CollectionManager[T CollectionItem] struct {
 	metadata   *MetadataControl[[]T]
 	items      *registery.Registry[T]
 	itemAssets map[int][]*model.PHAsset
+}
+
+// SortOptions defines sorting configuration
+type SortOptions struct {
+	SortBy    string // "id", "creationDate", "modificationDate"
+	SortOrder string // "asc", "desc"
 }
 
 func NewCollectionManager[T CollectionItem](path string) (*CollectionManager[T], error) {
@@ -153,7 +163,65 @@ func (manager *CollectionManager[T]) GetItemAssets(id int) ([]*model.PHAsset, er
 	return manager.itemAssets[id], nil
 }
 
-// SortItems sorts items using a custom comparison function
-func SortItems[T any](items []T, less func(i, j int) bool) {
-	sort.Slice(items, less)
+// SortItems sorts the items according to the specified options
+func (manager *CollectionManager[T]) SortItems(items []T, options SortOptions) []T {
+
+	if options.SortBy == "" {
+		return items
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		a := items[i]
+		b := items[j]
+
+		switch options.SortBy {
+		case "id":
+			if options.SortOrder == "asc" {
+				return a.GetID() < b.GetID()
+			}
+			return a.GetID() > b.GetID()
+		case "creationDate":
+			if options.SortOrder == "asc" {
+				return a.GetCreationDate().Before(b.GetCreationDate())
+			}
+			return a.GetCreationDate().After(b.GetCreationDate())
+		case "modificationDate":
+			if options.SortOrder == "asc" {
+				return a.GetModificationDate().Before(b.GetModificationDate())
+			}
+			return a.GetModificationDate().After(b.GetModificationDate())
+		default:
+			return false
+		}
+	})
+
+	return items
 }
+
+// GetSortedList returns filtered and sorted items
+func (manager *CollectionManager[T]) GetSortedList(filterFunc func(T) bool, sortBy string, sortOrder string) ([]T, error) {
+
+	items, err := manager.GetList(filterFunc)
+	if err != nil {
+		return nil, err
+	}
+	return manager.SortItems(items, SortOptions{
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+	}), nil
+}
+
+// GetAllSorted returns all items sorted according to options
+func (manager *CollectionManager[T]) GetAllSorted(sortBy string, sortOrder string) ([]T, error) {
+	items, err := manager.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	return manager.SortItems(items, SortOptions{SortBy: sortBy, SortOrder: sortOrder}), nil
+}
+
+//// SortItems sorts items using a custom comparison function
+//func SortItems[T any](items []T, less func(i, j int) bool) {
+//	sort.Slice(items, less)
+//}

@@ -310,6 +310,9 @@ func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
 func (us *UserStorage) UpdateCollections() {
 	us.prepareAlbums()
 	us.prepareCameras()
+	us.prepareTrips()
+	us.preparePersons()
+	us.preparePinned()
 }
 
 func (us *UserStorage) GetSystemStats() Stats {
@@ -323,7 +326,7 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 	us.mu.RLock()
 	defer us.mu.RUnlock()
 
-	startTime := time.Now()
+	//startTime := time.Now()
 
 	// Step 1: Build criteria from with
 	criteria := assetBuildCriteria(with)
@@ -366,12 +369,12 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 	paginated := matches[start:end]
 
 	//Log performance
-	duration := time.Since(startTime)
-	log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
+	//duration := time.Since(startTime)
+	//log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
 
 	//fmt.Println("matches[start:end]: ", start, end)
 	//fmt.Println("matches: ", with.FetchOffset)
-	fmt.Println("paginated: ", len(paginated))
+	//fmt.Println("paginated: ", len(paginated))
 
 	return paginated, totalCount, nil
 }
@@ -439,7 +442,7 @@ func (us *UserStorage) preparePersons() {
 			Persons:    []int{item.ID},
 			SortBy:     "modificationDate",
 			SortOrder:  "gg",
-			FetchLimit: 2,
+			FetchLimit: 1,
 		}
 
 		assets, count, err := us.FetchAssets(with)
@@ -477,29 +480,8 @@ func (us *UserStorage) prepareCameras() {
 	}
 }
 
-func (us *UserStorage) preparePinned() {
-
-	items, err := us.AlbumManager.GetAll()
-	if err != nil {
-	}
-
-	for _, album := range items {
-
-		with := model.PHFetchOptions{
-			UserID:     4,
-			Albums:     []int{album.ID},
-			SortBy:     "modificationDate",
-			SortOrder:  "gg",
-			FetchLimit: 6,
-		}
-
-		assets, count, err := us.FetchAssets(with)
-		if err != nil {
-			continue
-		}
-		album.Count = count
-		us.PinnedManager.itemAssets[album.ID] = assets
-	}
+func GetBoolPointer(b bool) *bool {
+	return &b
 }
 
 func (us *UserStorage) DeleteAsset(id int) error {
@@ -581,19 +563,26 @@ func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset]
 		}
 
 		// Filter by boolean flags (if specified)
-		if with.IsFavorite != nil && asset.IsFavorite != *with.IsFavorite {
+		if with.IsCamera != nil && *with.IsCamera != asset.IsCamera {
 			return false
 		}
-		if with.IsScreenshot != nil && asset.IsScreenshot != *with.IsScreenshot {
+		if with.IsFavorite != nil && *with.IsFavorite != asset.IsFavorite {
 			return false
 		}
-		if with.IsHidden != nil && asset.IsHidden != *with.IsHidden {
+		if with.IsScreenshot != nil && *with.IsScreenshot != asset.IsScreenshot {
+			return false
+		}
+		if with.IsHidden != nil && *with.IsHidden != asset.IsHidden {
 			return false
 		}
 
-		if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
-			return false
+		if with.NotInOneAlbum != nil {
+
 		}
+
+		//if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
+		//	return false
+		//}
 
 		// Filter by  int
 		if with.PixelWidth != 0 && asset.PixelWidth != with.PixelWidth {
@@ -750,4 +739,82 @@ func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 			return false // No sorting for unknown fields
 		}
 	})
+}
+
+func (us *UserStorage) preparePinned() {
+
+	items, err := us.PinnedManager.GetAll()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, item := range items {
+
+		var with *model.PHFetchOptions
+
+		switch item.Type {
+		case "camera":
+			with = &model.PHFetchOptions{
+				IsCamera:   GetBoolPointer(true),
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "screenshot":
+			with = &model.PHFetchOptions{
+				IsScreenshot: GetBoolPointer(true),
+				SortBy:       "modificationDate",
+				SortOrder:    "acs",
+				FetchLimit:   1,
+			}
+			break
+		case "favorite":
+			with = &model.PHFetchOptions{
+				IsFavorite: GetBoolPointer(true),
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "video":
+			with = &model.PHFetchOptions{
+				MediaType:  "video",
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "map":
+			var assets []*model.PHAsset
+			asset := model.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
+			assets = append(assets, &asset)
+			us.PinnedManager.itemAssets[item.ID] = assets
+			break
+		case "album":
+			album, err := us.AlbumManager.Get(item.AlbumID)
+			if err != nil {
+				continue
+			}
+			item.Title = album.Title
+			with = &model.PHFetchOptions{
+				Albums:     []int{album.ID},
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		}
+
+		if with == nil || item.Type == "map" {
+			continue
+		}
+
+		assets, count, err := us.FetchAssets(*with)
+		if err != nil {
+			continue
+		}
+		item.Count = count
+		us.PinnedManager.itemAssets[item.ID] = assets
+	}
 }

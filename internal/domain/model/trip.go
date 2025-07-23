@@ -6,10 +6,13 @@ func (a *Trip) GetID() int                      { return a.ID }
 func (a *Trip) SetID(id int)                    { a.ID = id }
 func (a *Trip) SetCreationDate(t time.Time)     { a.CreationDate = t }
 func (a *Trip) SetModificationDate(t time.Time) { a.ModificationDate = t }
+func (a *Trip) GetCreationDate() time.Time      { return a.CreationDate }
+func (a *Trip) GetModificationDate() time.Time  { return a.ModificationDate }
 
 type Trip struct {
 	ID               int       `json:"id"`
-	Name             string    `json:"name"`
+	Title            string    `json:"title,omitempty"`
+	Subtitle         string    `json:"subtitle,omitempty"`
 	TripType         string    `json:"tripType,omitempty"`
 	Count            int       `json:"count"`
 	IsCollection     bool      `json:"isCollection"`
@@ -19,24 +22,28 @@ type Trip struct {
 
 type TripHandler struct {
 	ID           int    `json:"id"`
-	Name         string `json:"name,omitempty"`
+	Title        string `json:"title,omitempty"`
+	Subtitle     string `json:"subtitle,omitempty"`
 	TripType     string `json:"trip,omitempty"`
 	IsCollection *bool  `json:"isCollection,omitempty"`
 }
 
-func UpdateTrip(trip *Trip, handler TripHandler) *Trip {
+func UpdateTrip(item *Trip, handler TripHandler) *Trip {
 
-	if handler.Name != "" {
-		trip.Name = handler.Name
+	if handler.Title != "" {
+		item.Title = handler.Title
+	}
+	if handler.Subtitle != "" {
+		item.Subtitle = handler.Subtitle
 	}
 
 	if handler.TripType != "" {
-		trip.TripType = handler.TripType
+		item.TripType = handler.TripType
 	}
 
 	if handler.IsCollection != nil {
-		trip.IsCollection = *handler.IsCollection
+		item.IsCollection = *handler.IsCollection
 	}
 
-	return trip
+	return item
 }

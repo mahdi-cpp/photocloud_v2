@@ -5,6 +5,7 @@ import (
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
 	"net/http"
+	"sort"
 	"strconv"
 )
 
@@ -32,13 +33,12 @@ func (handler *PinnedHandler) Create(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	item2, err := collectionManager.Create(&item)
+	item2, err := userStorage.PinnedManager.Create(&item)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -61,19 +61,18 @@ func (handler *PinnedHandler) Update(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	item, err := collectionManager.Get(itemHandler.ID)
+	item, err := userStorage.PinnedManager.Get(itemHandler.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 	model.UpdatePinned(item, itemHandler)
 
-	item2, err := collectionManager.Update(item)
+	item2, err := userStorage.PinnedManager.Update(item)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -96,13 +95,12 @@ func (handler *PinnedHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	err = collectionManager.Delete(item.ID)
+	err = userStorage.PinnedManager.Delete(item.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
@@ -119,17 +117,17 @@ func (handler *PinnedHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
-	items, err := collectionManager.GetAll()
+	items, err := userStorage.PinnedManager.GetAll()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
+	items = sortPinnedCollectionByIndex(items)
 
 	// Create collection list without interface constraint
 	result := model.PHCollectionList[*model.Pinned]{
@@ -137,7 +135,7 @@ func (handler *PinnedHandler) GetList(c *gin.Context) {
 	}
 
 	for i, item := range items {
-		assets, _ := collectionManager.GetItemAssets(item.ID)
+		assets, _ := userStorage.PinnedManager.GetItemAssets(item.ID)
 		result.Collections[i] = &model.PHCollection[*model.Pinned]{
 			Item:   item,
 			Assets: assets,
@@ -155,14 +153,13 @@ func (handler *PinnedHandler) GetCollectionListWith(c *gin.Context) {
 		return
 	}
 
-	collectionManager, err := handler.userStorageManager.GetPinnedManager(c, userID)
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
 	}
 
 	// Get only visible items
-	items, err := collectionManager.GetList(func(a *model.Pinned) bool {
+	items, err := userStorage.PinnedManager.GetList(func(a *model.Pinned) bool {
 		return a.Icon == ""
 	})
 	if err != nil {
@@ -171,4 +168,14 @@ func (handler *PinnedHandler) GetCollectionListWith(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": items})
+}
+
+func sortPinnedCollectionByIndex(items []*model.Pinned) []*model.Pinned {
+	sort.Slice(items, func(i, j int) bool {
+		a := items[i]
+		b := items[j]
+		return a.Index < b.Index
+	})
+
+	return items
 }

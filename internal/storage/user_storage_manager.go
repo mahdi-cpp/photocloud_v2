@@ -229,7 +229,7 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.AlbumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/collection.json")
+	userStorage.AlbumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/albums.json")
 	if err != nil {
 		panic(err)
 	}
@@ -305,20 +305,21 @@ func (us *UserStorageManager) GetUserManager() (*CollectionManager[*model.User],
 //	return userStorage.TripManager, nil
 //}
 
-func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
-	userStorage, err := us.GetUserStorage(c, userID)
-	if err != nil {
-		return nil, err
-	}
+//func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
+//	userStorage, err := us.GetUserStorage(c, userID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return userStorage.PersonManager, nil
+//}
 
-	return userStorage.PersonManager, nil
-}
-
-func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*CollectionManager[*model.Pinned], error) {
-	userStorage, err := us.GetUserStorage(c, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return userStorage.PinnedManager, nil
-}
+//
+//func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*CollectionManager[*model.Pinned], error) {
+//	userStorage, err := us.GetUserStorage(c, userID)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return userStorage.PinnedManager, nil
+//}

@@ -28,8 +28,8 @@ func main() {
 	//
 	//var images []string
 	//for _, file := range files {
-	//	fmt.Println(file.Name())
-	//	images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Name())
+	//	fmt.Println(file.Title())
+	//	images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Title())
 	//}
 	//
 	//// Load various image types
@@ -199,6 +199,7 @@ func createRouter(
 		api.POST("/assets/delete", assetHandler.Delete)
 		api.POST("/assets/filters", assetHandler.Filters)
 
+		//http://localhost:8080/api/v1/assets/download/thumbnail/map_270.jpg
 		api.GET("/assets/download/:filename", assetHandler.OriginalDownload)
 		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
 		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
