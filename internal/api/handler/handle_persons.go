@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"net/http"
 )
 
@@ -26,7 +26,7 @@ func (handler *PersonHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var request model.CollectionRequest
+	var request happle_models.CollectionRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -43,7 +43,7 @@ func (handler *PersonHandler) Create(c *gin.Context) {
 		return
 	}
 
-	update := asset_model.AssetUpdate{AssetIds: request.AssetIds, AddPersons: []int{newItem.ID}}
+	update := happle_models.AssetUpdate{AssetIds: request.AssetIds, AddPersons: []int{newItem.ID}}
 	_, err = userStorage.UpdateAsset(update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -52,7 +52,7 @@ func (handler *PersonHandler) Create(c *gin.Context) {
 
 	userStorage.UpdateCollections()
 
-	c.JSON(http.StatusCreated, model.CollectionResponse{
+	c.JSON(http.StatusCreated, happle_models.CollectionResponse{
 		ID:    newItem.ID,
 		Title: newItem.Title,
 	})
@@ -139,13 +139,13 @@ func (handler *PersonHandler) GetCollectionList(c *gin.Context) {
 		return
 	}
 
-	result := model.PHCollectionList[*model.Person]{
-		Collections: make([]*model.PHCollection[*model.Person], len(items)),
+	result := happle_models.PHCollectionList[*model.Person]{
+		Collections: make([]*happle_models.PHCollection[*model.Person], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := userStorage.PersonManager.GetItemAssets(item.ID)
-		result.Collections[i] = &model.PHCollection[*model.Person]{
+		result.Collections[i] = &happle_models.PHCollection[*model.Person]{
 			Item:   item,
 			Assets: assets,
 		}

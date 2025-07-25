@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +20,7 @@ type UserStorageManager struct {
 	mu                  sync.RWMutex
 	config              Config
 	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
-	userManager         *CollectionManager[*model.User]
+	userManager         *collection.CollectionManager[*happle_models.User]
 	originalImageLoader *image_loader.ImageLoader
 	tinyImageLoader     *image_loader.ImageLoader
 	iconLoader          *image_loader.ImageLoader
@@ -34,7 +37,7 @@ func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
 	}
 
 	var err error
-	manager.userManager, err = NewCollectionManager[*model.User]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/users.json")
+	manager.userManager, err = collection.NewCollectionManager[*happle_models.User]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/users.json")
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +68,7 @@ func (us *UserStorageManager) loadAllIcons() {
 	}
 }
 
-func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
+func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*collection.CollectionManager[*model.Person], error) {
 	userStorage, err := us.GetUserStorage(c, userID)
 	if err != nil {
 		return nil, err
@@ -163,7 +166,7 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		config:            userConfig,
 		user:              *user,
 		metadata:          NewMetadataManager(userMetadataDir),
-		thumbnail:         NewThumbnailManager(userThumbnailsDir),
+		thumbnail:         thumbnail.NewThumbnailManager(userThumbnailsDir),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 	}
@@ -173,27 +176,27 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.AlbumManager, err = NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/albums.json")
+	userStorage.AlbumManager, err = collection.NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/albums.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.SharedAlbumManager, err = NewCollectionManager[*model.SharedAlbum]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/shared_albums.json")
+	userStorage.SharedAlbumManager, err = collection.NewCollectionManager[*model.SharedAlbum]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/shared_albums.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.TripManager, err = NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
+	userStorage.TripManager, err = collection.NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PersonManager, err = NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
+	userStorage.PersonManager, err = collection.NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PinnedManager, err = NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
+	userStorage.PinnedManager, err = collection.NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
 	if err != nil {
 		panic(err)
 	}
@@ -227,6 +230,6 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 	}
 }
 
-func (us *UserStorageManager) GetUserManager() (*CollectionManager[*model.User], error) {
+func (us *UserStorageManager) GetUserManager() (*collection.CollectionManager[*happle_models.User], error) {
 	return us.userManager, nil
 }

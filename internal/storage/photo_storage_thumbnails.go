@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	"log"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ func (ps *PhotoStorage) GetThumbnail(id int, width, height int) ([]byte, error) 
 	}
 
 	// Generate thumbnail
-	thumbnailService := NewThumbnailService(width, height, 85, ps, true, "")
+	thumbnailService := thumbnail.NewThumbnailService(width, height, 85, ps, true, "")
 	thumbData, err := thumbnailService.GenerateThumbnail(asset, content)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnail generation failed: %w", err)

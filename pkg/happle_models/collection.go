@@ -1,7 +1,6 @@
-package model
+package happle_models
 
 import (
-	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"time"
 )
 
@@ -12,8 +11,8 @@ type PHCollectionList[T any] struct {
 }
 
 type PHCollection[T any] struct {
-	Item   T                      `json:"item"`   // Generic items
-	Assets []*asset_model.PHAsset `json:"assets"` // Specific assets
+	Item   T          `json:"item"`   // Generic items
+	Assets []*PHAsset `json:"assets"` // Specific assets
 }
 
 type SortableCollectionItem interface {

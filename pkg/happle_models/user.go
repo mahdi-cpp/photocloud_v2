@@ -1,4 +1,4 @@
-package model
+package happle_models
 
 import "time"
 

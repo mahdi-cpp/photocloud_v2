@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"net/http"
 )
 
@@ -127,13 +128,13 @@ func (handler *SharedAlbumHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	result := model.PHCollectionList[*model.SharedAlbum]{
-		Collections: make([]*model.PHCollection[*model.SharedAlbum], len(items)),
+	result := happle_models.PHCollectionList[*model.SharedAlbum]{
+		Collections: make([]*happle_models.PHCollection[*model.SharedAlbum], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := userStorage.SharedAlbumManager.GetItemAssets(item.ID)
-		result.Collections[i] = &model.PHCollection[*model.SharedAlbum]{
+		result.Collections[i] = &happle_models.PHCollection[*model.SharedAlbum]{
 			Item:   item,
 			Assets: assets,
 		}

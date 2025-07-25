@@ -1,4 +1,4 @@
-package model
+package happle_models
 
 type AppConfig struct {
 	Version  string   `json:"version"`

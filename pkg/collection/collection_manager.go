@@ -1,12 +1,12 @@
-package storage
+package collection
 
 // https://chat.deepseek.com/a/chat/s/9b010f32-b23d-4f9b-ae0c-31a9b2c9408c
 
 import (
 	"errors"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
-	"github.com/mahdi-cpp/photocloud_v2/registery"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/registery"
 	"sort"
 	"strconv"
 	"time"
@@ -26,7 +26,7 @@ type CollectionItem interface {
 type CollectionManager[T CollectionItem] struct {
 	metadata   *MetadataControl[[]T]
 	items      *registery.Registry[T]
-	itemAssets map[int][]*asset_model.PHAsset
+	ItemAssets map[int][]*happle_models.PHAsset
 }
 
 // SortOptions defines sorting configuration
@@ -40,7 +40,7 @@ func NewCollectionManager[T CollectionItem](path string) (*CollectionManager[T],
 	manager := &CollectionManager[T]{
 		items:      registery.NewRegistry[T](),
 		metadata:   NewMetadataControl[[]T](path),
-		itemAssets: make(map[int][]*asset_model.PHAsset),
+		ItemAssets: make(map[int][]*happle_models.PHAsset),
 	}
 
 	items, err := manager.load()
@@ -159,8 +159,8 @@ func (manager *CollectionManager[T]) GetBy(filterFunc func(T) bool) ([]T, error)
 	return result, nil
 }
 
-func (manager *CollectionManager[T]) GetItemAssets(id int) ([]*asset_model.PHAsset, error) {
-	return manager.itemAssets[id], nil
+func (manager *CollectionManager[T]) GetItemAssets(id int) ([]*happle_models.PHAsset, error) {
+	return manager.ItemAssets[id], nil
 }
 
 // SortItems sorts the items according to the specified options

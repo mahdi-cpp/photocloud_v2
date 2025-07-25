@@ -3,8 +3,8 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"net/http"
 )
 
@@ -20,7 +20,7 @@ func NewUserHandler(userStorageManager *storage.UserStorageManager) *UserHandler
 
 func (handler *UserHandler) Create(c *gin.Context) {
 
-	var item model.User
+	var item happle_models.User
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -43,7 +43,7 @@ func (handler *UserHandler) Create(c *gin.Context) {
 
 func (handler *UserHandler) Update(c *gin.Context) {
 
-	var itemHandler model.UserHandler
+	var itemHandler happle_models.UserHandler
 	if err := c.ShouldBindJSON(&itemHandler); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -63,7 +63,7 @@ func (handler *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	model.UpdateUser(item, itemHandler)
+	happle_models.UpdateUser(item, itemHandler)
 
 	item2, err := collectionManager.Update(item)
 	if err != nil {
@@ -76,7 +76,7 @@ func (handler *UserHandler) Update(c *gin.Context) {
 
 func (handler *UserHandler) Delete(c *gin.Context) {
 
-	var item model.User
+	var item happle_models.User
 	if err := c.ShouldBindJSON(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -128,12 +128,12 @@ func (handler *UserHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	result := model.PHCollectionList[*model.User]{
-		Collections: make([]*model.PHCollection[*model.User], len(items)),
+	result := happle_models.PHCollectionList[*happle_models.User]{
+		Collections: make([]*happle_models.PHCollection[*happle_models.User], len(items)),
 	}
 
 	for i, item := range items {
-		result.Collections[i] = &model.PHCollection[*model.User]{
+		result.Collections[i] = &happle_models.PHCollection[*happle_models.User]{
 			Item: item,
 		}
 	}

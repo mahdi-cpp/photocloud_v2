@@ -1,4 +1,4 @@
-package asset_model
+package happle_models
 
 import (
 	"time"

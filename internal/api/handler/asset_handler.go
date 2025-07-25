@@ -3,7 +3,7 @@ package handler
 import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -42,7 +42,7 @@ func (handler *AssetHandler) Upload(c *gin.Context) {
 	defer file.Close()
 
 	// Handler asset metadata
-	asset := &asset_model.PHAsset{
+	asset := &happle_models.PHAsset{
 		UserID:   userID,
 		Filename: header.Filename,
 	}
@@ -77,7 +77,7 @@ func (handler *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var update asset_model.AssetUpdate
+	var update happle_models.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -112,7 +112,7 @@ func (handler *AssetHandler) UpdateAll(c *gin.Context) {
 		return
 	}
 
-	var update asset_model.AssetUpdate
+	var update happle_models.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -195,10 +195,10 @@ func (handler *AssetHandler) Search(c *gin.Context) {
 		}
 	}
 
-	filters := asset_model.PHFetchOptions{
+	filters := happle_models.PHFetchOptions{
 		UserID:    userID,
 		Query:     query,
-		MediaType: asset_model.MediaType(mediaType),
+		MediaType: happle_models.MediaType(mediaType),
 	}
 
 	if len(dateRange) > 0 {
@@ -229,7 +229,7 @@ func (handler *AssetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var request asset_model.AssetDelete
+	var request happle_models.AssetDelete
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -262,7 +262,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters")
 
-	var with asset_model.PHFetchOptions
+	var with happle_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -282,7 +282,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := asset_model.PHFetchResult[*asset_model.PHAsset]{
+	result := happle_models.PHFetchResult[*happle_models.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"strings"
 	"sync"
 	"time"
@@ -9,7 +9,7 @@ import (
 
 // Indexer defines the interface for indexing assets
 type Indexer interface {
-	Add(asset *asset_model.PHAsset)
+	Add(asset *happle_models.PHAsset)
 	Remove(id int)
 	Search(query interface{}) []int
 	Filter(ids []int, query interface{}) []int
@@ -32,7 +32,7 @@ func NewTextIndexer() *TextIndexer {
 	}
 }
 
-func (idx *TextIndexer) Add(asset *asset_model.PHAsset) {
+func (idx *TextIndexer) Add(asset *happle_models.PHAsset) {
 	words := tokenize(asset.Filename)
 
 	idx.mu.Lock()
@@ -133,7 +133,7 @@ func NewDateIndexer() *DateIndexer {
 	}
 }
 
-func (idx *DateIndexer) Add(asset *asset_model.PHAsset) {
+func (idx *DateIndexer) Add(asset *happle_models.PHAsset) {
 	dateKey := asset.CreationDate.Format("2006-01-02")
 
 	idx.mu.Lock()
