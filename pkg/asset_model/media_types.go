@@ -1,4 +1,4 @@
-package model
+package asset_model
 
 type MediaType string
 

@@ -3,7 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,7 +26,7 @@ func NewMetadataManager(dir string) *MetadataManager {
 }
 
 // SaveMetadata saves asset metadata
-func (m *MetadataManager) SaveMetadata(asset *model.PHAsset) error {
+func (m *MetadataManager) SaveMetadata(asset *asset_model.PHAsset) error {
 	path := m.getMetadataPath(asset.ID)
 
 	data, err := json.MarshalIndent(asset, "", "  ")
@@ -44,7 +44,7 @@ func (m *MetadataManager) SaveMetadata(asset *model.PHAsset) error {
 }
 
 // LoadMetadata loads asset metadata
-func (m *MetadataManager) LoadMetadata(id int) (*model.PHAsset, error) {
+func (m *MetadataManager) LoadMetadata(id int) (*asset_model.PHAsset, error) {
 	path := m.getMetadataPath(id)
 
 	data, err := os.ReadFile(path)
@@ -55,7 +55,7 @@ func (m *MetadataManager) LoadMetadata(id int) (*model.PHAsset, error) {
 		return nil, fmt.Errorf("failed to read metadata: %w", err)
 	}
 
-	var asset model.PHAsset
+	var asset asset_model.PHAsset
 	if err := json.Unmarshal(data, &asset); err != nil {
 		return nil, fmt.Errorf("failed to parse metadata: %w", err)
 	}
@@ -63,11 +63,11 @@ func (m *MetadataManager) LoadMetadata(id int) (*model.PHAsset, error) {
 	return &asset, nil
 }
 
-func (m *MetadataManager) LoadUserAllMetadata() (map[int]*model.PHAsset, error) {
+func (m *MetadataManager) LoadUserAllMetadata() (map[int]*asset_model.PHAsset, error) {
 
 	startTime := time.Now() // Capture start time
 
-	var assets = make(map[int]*model.PHAsset)
+	var assets = make(map[int]*asset_model.PHAsset)
 
 	// Scan metadata directory
 	files, err := os.ReadDir(m.dir)

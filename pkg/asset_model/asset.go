@@ -1,4 +1,4 @@
-package model
+package asset_model
 
 import (
 	"time"
@@ -11,12 +11,13 @@ const (
 )
 
 type PHAsset struct {
-	ID        int       `json:"id"`
-	UserID    int       `json:"userId"`
-	Url       string    `json:"url"`
-	Filename  string    `json:"filename"`
-	Format    string    `json:"format"`
-	MediaType MediaType `json:"mediaType"`
+	ID          int       `json:"id"`
+	UserID      int       `json:"userId"`
+	Url         string    `json:"url"`
+	Filename    string    `json:"filename"`
+	Format      string    `json:"format"`
+	MediaType   MediaType `json:"mediaType"`
+	Orientation int       `json:"orientation"`
 
 	PixelWidth  int `json:"pixelWidth"`
 	PixelHeight int `json:"pixelHeight"`
@@ -90,10 +91,13 @@ type PHFetchOptions struct {
 type AssetUpdate struct {
 	AssetIds []int `json:"assetIds,omitempty"` // Asset Ids
 
-	Filename    *string `json:"filename,omitempty"`
+	Filename  *string   `json:"filename,omitempty"`
+	MediaType MediaType `json:"mediaType,omitempty"`
+
 	CameraMake  *string `json:"cameraMake,omitempty"`
 	CameraModel *string `json:"cameraModel,omitempty"`
 
+	IsCamera     *bool `json:"isCamera,omitempty"`
 	IsFavorite   *bool `json:"isFavorite,omitempty"`
 	IsScreenshot *bool `json:"IsScreenshot,omitempty"`
 	IsHidden     *bool `json:"isHidden,omitempty"`

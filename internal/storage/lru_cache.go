@@ -2,7 +2,7 @@ package storage
 
 import (
 	"container/list"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"sync"
 )
 
@@ -16,7 +16,7 @@ type LRUCache struct {
 
 type cacheItem struct {
 	key   int
-	asset *model.PHAsset
+	asset *asset_model.PHAsset
 }
 
 // NewLRUCache creates a new LRU memory
@@ -29,7 +29,7 @@ func NewLRUCache(capacity int) *LRUCache {
 }
 
 // Get retrieves an asset from memory
-func (c *LRUCache) Get(id int) (*model.PHAsset, bool) {
+func (c *LRUCache) Get(id int) (*asset_model.PHAsset, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -41,7 +41,7 @@ func (c *LRUCache) Get(id int) (*model.PHAsset, bool) {
 }
 
 // Put adds an asset to memory
-func (c *LRUCache) Put(id int, asset *model.PHAsset) {
+func (c *LRUCache) Put(id int, asset *asset_model.PHAsset) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

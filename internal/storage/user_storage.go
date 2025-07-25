@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -18,15 +19,16 @@ import (
 )
 
 type UserStorage struct {
-	config             Config
-	mu                 sync.RWMutex // Protects all indexes and maps
-	user               model.User
-	assets             map[int]*model.PHAsset
-	AlbumManager       *CollectionManager[*model.Album]
-	TripManager        *CollectionManager[*model.Trip]
-	PersonManager      *CollectionManager[*model.Person]
-	PinnedManager      *CollectionManager[*model.Pinned]
-	CameraManager      *CollectionManager[*model.Camera]
+	config        Config
+	mu            sync.RWMutex // Protects all indexes and maps
+	user          model.User
+	assets        map[int]*asset_model.PHAsset
+	cameras       map[string]*model.PHCollection[model.Camera]
+	AlbumManager  *CollectionManager[*model.Album]
+	TripManager   *CollectionManager[*model.Trip]
+	PersonManager *CollectionManager[*model.Person]
+	PinnedManager *CollectionManager[*model.Pinned]
+	//CameraManager      *CollectionManager[*model.Camera]
 	SharedAlbumManager *CollectionManager[*model.SharedAlbum]
 	metadata           *MetadataManager
 	thumbnail          *ThumbnailManager
@@ -38,10 +40,10 @@ type UserStorage struct {
 	stats              Stats
 }
 
-func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
+func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*asset_model.PHAsset, error) {
 
 	// Check file size
-	if header.Size > us.config.MaxUploadSize {
+	if header.Size > userStorage.config.MaxUploadSize {
 		return nil, ErrFileTooLarge
 	}
 
@@ -54,7 +56,7 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 	// Handler asset filename
 	ext := filepath.Ext(header.Filename)
 	filename := fmt.Sprintf("%d%s", 1, ext)
-	assetPath := filepath.Join(us.config.AssetsDir, filename)
+	assetPath := filepath.Join(userStorage.config.AssetsDir, filename)
 
 	// Save asset file
 	if err := os.WriteFile(assetPath, fileBytes, 0644); err != nil {
@@ -72,8 +74,8 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 	mediaType := GetMediaType(ext)
 
 	// Handler asset
-	asset := &model.PHAsset{
-		ID:           us.lastID,
+	asset := &asset_model.PHAsset{
+		ID:           userStorage.lastID,
 		UserID:       userID,
 		Filename:     filename,
 		CreationDate: time.Now(),
@@ -84,63 +86,52 @@ func (us *UserStorage) UploadAsset(userID int, file multipart.File, header *mult
 	}
 
 	// Save metadata
-	if err := us.metadata.SaveMetadata(asset); err != nil {
+	if err := userStorage.metadata.SaveMetadata(asset); err != nil {
 		// Clean up asset file if metadata save fails
 		os.Remove(assetPath)
 		return nil, fmt.Errorf("failed to save metadata: %w", err)
 	}
 
 	// Add to indexes
-	//us.addToIndexes(asset)
+	//userStorage.addToIndexes(asset)
 
 	// Update stats
-	us.statsMu.Lock()
-	us.stats.TotalAssets++
-	us.stats.Uploads24h++
-	us.statsMu.Unlock()
+	userStorage.statsMu.Lock()
+	userStorage.stats.TotalAssets++
+	userStorage.stats.Uploads24h++
+	userStorage.statsMu.Unlock()
 
 	return asset, nil
 }
 
-func (us *UserStorage) GetAsset(assetId int) (*model.PHAsset, bool) {
-
-	//var selectAsset model.PHAsset
-	//for _, asset := range us.assets {
-	//	if asset.ID == assetId {
-	//		selectAsset = asset
-	//		break
-	//	}
-	//}
-
-	asset, exists := us.assets[assetId]
+func (userStorage *UserStorage) GetAsset(assetId int) (*asset_model.PHAsset, bool) {
+	asset, exists := userStorage.assets[assetId]
 	return asset, exists
 }
 
-func (us *UserStorage) GetAssetContent(id int) ([]byte, error) {
+func (userStorage *UserStorage) GetAllAssets() map[int]*asset_model.PHAsset {
+	return userStorage.assets
+}
+
+func (userStorage *UserStorage) GetAssetContent(id int) ([]byte, error) {
 	// Get asset to resolve filename
-	asset, exists := us.GetAsset(id)
+	asset, exists := userStorage.GetAsset(id)
 	if !exists {
 		return nil, fmt.Errorf("asset not found")
 	}
 
-	assetPath := filepath.Join(us.config.AssetsDir, asset.Filename)
+	assetPath := filepath.Join(userStorage.config.AssetsDir, asset.Filename)
 	return os.ReadFile(assetPath)
 }
 
-func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
+func (userStorage *UserStorage) UpdateAsset(update asset_model.AssetUpdate) (string, error) {
 
-	us.mu.Lock()
-	defer us.mu.Unlock()
+	userStorage.mu.Lock()
+	defer userStorage.mu.Unlock()
 
 	for _, id := range update.AssetIds {
 
-		// Load current asset
-		//asset, err := us.metadata.LoadMetadata(id)
-		//if err != nil {
-		//	return "", err
-		//}
-
-		asset, exists := us.GetAsset(id)
+		asset, exists := userStorage.GetAsset(id)
 		if !exists {
 			continue
 		}
@@ -149,13 +140,18 @@ func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
 		if update.Filename != nil {
 			asset.Filename = *update.Filename
 		}
+		if update.MediaType != "" {
+			asset.MediaType = update.MediaType
+		}
 		if update.CameraMake != nil {
 			asset.CameraMake = *update.CameraMake
 		}
 		if update.CameraModel != nil {
 			asset.CameraModel = *update.CameraModel
 		}
-
+		if update.IsCamera != nil {
+			asset.IsCamera = *update.IsCamera
+		}
 		if update.IsFavorite != nil {
 			asset.IsFavorite = *update.IsFavorite
 		}
@@ -283,22 +279,22 @@ func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
 		asset.ModificationDate = time.Now()
 
 		// Save updated metadata
-		if err := us.metadata.SaveMetadata(asset); err != nil {
+		if err := userStorage.metadata.SaveMetadata(asset); err != nil {
 			return "", err
 		}
 
-		//for _, asset := range us.assets {
+		//for _, asset := range userStorage.assets {
 		//	if asset.ID == asset.ID {
-		//		us.assets
+		//		userStorage.assets
 		//		break
 		//	}
 		//}
 
 		// Update indexes
-		//us.updateIndexesForAsset(asset)
+		//userStorage.updateIndexesForAsset(asset)
 
 		// Update memory
-		//us.memory.Put(id, asset)
+		//userStorage.memory.Put(id, asset)
 	}
 
 	// Merging strings with the integer ID
@@ -307,24 +303,24 @@ func (us *UserStorage) UpdateAsset(update model.AssetUpdate) (string, error) {
 	return merged, nil
 }
 
-func (us *UserStorage) UpdateCollections() {
-	us.prepareAlbums()
-	us.prepareCameras()
-	us.prepareTrips()
-	us.preparePersons()
-	us.preparePinned()
+func (userStorage *UserStorage) UpdateCollections() {
+	userStorage.prepareAlbums()
+	userStorage.prepareCameras()
+	userStorage.prepareTrips()
+	userStorage.preparePersons()
+	userStorage.preparePinned()
 }
 
-func (us *UserStorage) GetSystemStats() Stats {
-	us.statsMu.Lock()
-	defer us.statsMu.Unlock()
-	return us.stats
+func (userStorage *UserStorage) GetSystemStats() Stats {
+	userStorage.statsMu.Lock()
+	defer userStorage.statsMu.Unlock()
+	return userStorage.stats
 }
 
-func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+func (userStorage *UserStorage) FetchAssets(with asset_model.PHFetchOptions) ([]*asset_model.PHAsset, int, error) {
 
-	us.mu.RLock()
-	defer us.mu.RUnlock()
+	userStorage.mu.RLock()
+	defer userStorage.mu.RUnlock()
 
 	//startTime := time.Now()
 
@@ -332,19 +328,19 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 	criteria := assetBuildCriteria(with)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*model.PHAsset
+	var matches []*asset_model.PHAsset
 	totalCount := 0
 
-	for _, asset := range us.assets {
+	for _, asset := range userStorage.assets {
 		if criteria(*asset) {
 			matches = append(matches, asset)
 			totalCount++
 		}
 	}
 
-	//for i := range us.assets {
-	//	if criteria(us.assets[i]) {
-	//		matches = append(matches, &us.assets[i])
+	//for i := range userStorage.assets {
+	//	if criteria(userStorage.assets[i]) {
+	//		matches = append(matches, &userStorage.assets[i])
 	//		totalCount++
 	//	}
 	//}
@@ -370,7 +366,7 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 
 	//Log performance
 	//duration := time.Since(startTime)
-	//log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(us.assets), totalCount, len(paginated), duration)
+	//log.Printf("Search: scanned %d assets, found %d matches, returned %d (in %v)", len(userStorage.assets), totalCount, len(paginated), duration)
 
 	//fmt.Println("matches[start:end]: ", start, end)
 	//fmt.Println("matches: ", with.FetchOffset)
@@ -379,15 +375,15 @@ func (us *UserStorage) FetchAssets(with model.PHFetchOptions) ([]*model.PHAsset,
 	return paginated, totalCount, nil
 }
 
-func (us *UserStorage) prepareAlbums() {
+func (userStorage *UserStorage) prepareAlbums() {
 
-	items, err := us.AlbumManager.GetAll()
+	items, err := userStorage.AlbumManager.GetAll()
 	if err != nil {
 	}
 
 	for _, album := range items {
 
-		with := model.PHFetchOptions{
+		with := asset_model.PHFetchOptions{
 			UserID:     4,
 			Albums:     []int{album.ID},
 			SortBy:     "modificationDate",
@@ -395,24 +391,24 @@ func (us *UserStorage) prepareAlbums() {
 			FetchLimit: 6,
 		}
 
-		assets, count, err := us.FetchAssets(with)
+		assets, count, err := userStorage.FetchAssets(with)
 		if err != nil {
 			continue
 		}
 		album.Count = count
-		us.AlbumManager.itemAssets[album.ID] = assets
+		userStorage.AlbumManager.itemAssets[album.ID] = assets
 	}
 }
 
-func (us *UserStorage) prepareTrips() {
+func (userStorage *UserStorage) prepareTrips() {
 
-	items, err := us.TripManager.GetAll()
+	items, err := userStorage.TripManager.GetAll()
 	if err != nil {
 	}
 
 	for _, item := range items {
 
-		with := model.PHFetchOptions{
+		with := asset_model.PHFetchOptions{
 			UserID:     1,
 			Trips:      []int{item.ID},
 			SortBy:     "modificationDate",
@@ -420,24 +416,24 @@ func (us *UserStorage) prepareTrips() {
 			FetchLimit: 2,
 		}
 
-		assets, count, err := us.FetchAssets(with)
+		assets, count, err := userStorage.FetchAssets(with)
 		if err != nil {
 			continue
 		}
 		item.Count = count
-		us.TripManager.itemAssets[item.ID] = assets
+		userStorage.TripManager.itemAssets[item.ID] = assets
 	}
 }
 
-func (us *UserStorage) preparePersons() {
+func (userStorage *UserStorage) preparePersons() {
 
-	items, err := us.PersonManager.GetAll()
+	items, err := userStorage.PersonManager.GetAll()
 	if err != nil {
 	}
 
 	for _, item := range items {
 
-		with := model.PHFetchOptions{
+		with := asset_model.PHFetchOptions{
 			UserID:     1,
 			Persons:    []int{item.ID},
 			SortBy:     "modificationDate",
@@ -445,86 +441,195 @@ func (us *UserStorage) preparePersons() {
 			FetchLimit: 1,
 		}
 
-		assets, count, err := us.FetchAssets(with)
+		assets, count, err := userStorage.FetchAssets(with)
 		if err != nil {
 			continue
 		}
 		item.Count = count
-		us.PersonManager.itemAssets[item.ID] = assets
+		userStorage.PersonManager.itemAssets[item.ID] = assets
 	}
 }
 
-func (us *UserStorage) prepareCameras() {
+func (userStorage *UserStorage) prepareCameras() {
 
-	items, err := us.CameraManager.GetAll()
-	if err != nil {
+	//items, err := userStorage.CameraManager.GetAll()
+	//if err != nil {
+	//}
+
+	if userStorage.cameras == nil {
+		userStorage.cameras = map[string]*model.PHCollection[model.Camera]{}
 	}
 
-	for _, item := range items {
+	for _, asset := range userStorage.assets {
+		if asset.CameraModel == "" {
+			continue
+		}
 
-		with := model.PHFetchOptions{
+		camera, exists := userStorage.cameras[asset.CameraModel]
+		if exists {
+			camera.Item.Count = camera.Item.Count + 1
+			userStorage.cameras[asset.CameraModel] = camera
+		} else {
+			collection := &model.PHCollection[model.Camera]{
+				Item: model.Camera{
+					ID:          1,
+					CameraMake:  asset.CameraMake,
+					CameraModel: asset.CameraModel,
+					Count:       1},
+			}
+			fmt.Println(collection)
+			userStorage.cameras[asset.CameraModel] = collection
+		}
+	}
+
+	//fmt.Println("camera count: ", len(userStorage.cameras))
+
+	for _, collection := range userStorage.cameras {
+
+		with := asset_model.PHFetchOptions{
 			UserID:      1,
-			CameraMake:  item.CameraMake,
-			CameraModel: item.CameraModel,
+			CameraMake:  collection.Item.CameraMake,
+			CameraModel: collection.Item.CameraModel,
 			SortBy:      "modificationDate",
 			SortOrder:   "gg",
 			FetchLimit:  6,
 		}
 
-		assets, count, err := us.FetchAssets(with)
+		assets, _, err := userStorage.FetchAssets(with)
+		if err != nil {
+			continue
+		}
+		collection.Assets = assets
+	}
+}
+
+func (userStorage *UserStorage) preparePinned() {
+
+	items, err := userStorage.PinnedManager.GetAll()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, item := range items {
+
+		var with *asset_model.PHFetchOptions
+
+		switch item.Type {
+		case "camera":
+			with = &asset_model.PHFetchOptions{
+				IsCamera:   GetBoolPointer(true),
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "screenshot":
+			with = &asset_model.PHFetchOptions{
+				IsScreenshot: GetBoolPointer(true),
+				SortBy:       "modificationDate",
+				SortOrder:    "acs",
+				FetchLimit:   1,
+			}
+			break
+		case "favorite":
+			with = &asset_model.PHFetchOptions{
+				IsFavorite: GetBoolPointer(true),
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "video":
+			with = &asset_model.PHFetchOptions{
+				MediaType:  "video",
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		case "map":
+			var assets []*asset_model.PHAsset
+			asset := asset_model.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
+			assets = append(assets, &asset)
+			userStorage.PinnedManager.itemAssets[item.ID] = assets
+			break
+		case "album":
+			album, err := userStorage.AlbumManager.Get(item.AlbumID)
+			if err != nil {
+				continue
+			}
+			item.Title = album.Title
+			with = &asset_model.PHFetchOptions{
+				Albums:     []int{album.ID},
+				SortBy:     "modificationDate",
+				SortOrder:  "acs",
+				FetchLimit: 1,
+			}
+			break
+		}
+
+		if with == nil || item.Type == "map" {
+			continue
+		}
+
+		assets, count, err := userStorage.FetchAssets(*with)
 		if err != nil {
 			continue
 		}
 		item.Count = count
-		us.CameraManager.itemAssets[item.ID] = assets
+		userStorage.PinnedManager.itemAssets[item.ID] = assets
 	}
+}
+
+func (userStorage *UserStorage) GetAllCameras() map[string]*model.PHCollection[model.Camera] {
+	return userStorage.cameras
 }
 
 func GetBoolPointer(b bool) *bool {
 	return &b
 }
 
-func (us *UserStorage) DeleteAsset(id int) error {
-	us.mu.Lock()
-	defer us.mu.Unlock()
+func (userStorage *UserStorage) DeleteAsset(id int) error {
+	userStorage.mu.Lock()
+	defer userStorage.mu.Unlock()
 
 	// Get asset
-	//asset, err := us.GetAsset(id)
+	//asset, err := userStorage.GetAsset(id)
 	//if err != nil {
 	//	return err
 	//}
 
 	// Delete asset file
-	//assetPath := filepath.Join(us.config.AssetsDir, asset.Filename)
+	//assetPath := filepath.Join(userStorage.config.AssetsDir, asset.Filename)
 	//if err := os.Remove(assetPath); err != nil {
 	//	return fmt.Errorf("failed to delete asset file: %w", err)
 	//}
 
 	// Delete metadata
-	if err := us.metadata.DeleteMetadata(id); err != nil {
+	if err := userStorage.metadata.DeleteMetadata(id); err != nil {
 		return fmt.Errorf("failed to delete metadata: %w", err)
 	}
 
 	// Delete thumbnail (if exists)
-	//us.thumbnail.DeleteThumbnails(id)
+	//userStorage.thumbnail.DeleteThumbnails(id)
 
 	// Remove from indexes
-	//us.removeFromIndexes(id)
+	//userStorage.removeFromIndexes(id)
 
 	// Remove from memory
-	//us.memory.Remove(id)
+	//userStorage.memory.Remove(id)
 
 	// Update stats
-	us.statsMu.Lock()
-	us.stats.TotalAssets--
-	us.statsMu.Unlock()
+	userStorage.statsMu.Lock()
+	userStorage.stats.TotalAssets--
+	userStorage.statsMu.Unlock()
 
 	return nil
 }
 
-func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset] {
+func assetBuildCriteria(with asset_model.PHFetchOptions) searchCriteria[asset_model.PHAsset] {
 
-	return func(asset model.PHAsset) bool {
+	return func(asset asset_model.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
 		//if with.UserID != 0 && asset.UserID != with.UserID {
@@ -580,9 +685,9 @@ func assetBuildCriteria(with model.PHFetchOptions) searchCriteria[model.PHAsset]
 
 		}
 
-		//if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
-		//	return false
-		//}
+		if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
+			return false
+		}
 
 		// Filter by  int
 		if with.PixelWidth != 0 && asset.PixelWidth != with.PixelWidth {
@@ -701,13 +806,14 @@ func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedIte
 	return results
 }
 
-func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
+func assetSortAssets(assets []*asset_model.PHAsset, sortBy, sortOrder string) {
 
 	if sortBy == "" {
 		return // No sorting requested
 	}
 
 	sort.Slice(assets, func(i, j int) bool {
+
 		a := assets[i]
 		b := assets[j]
 
@@ -717,6 +823,13 @@ func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 				return a.ID < b.ID
 			}
 			return a.ID > b.ID
+
+		case "capturedDate":
+			if sortOrder == "asc" {
+				return a.CapturedDate.Before(b.CapturedDate)
+			}
+			return a.CapturedDate.After(b.CapturedDate)
+
 		case "creationDate":
 			if sortOrder == "asc" {
 				return a.CreationDate.Before(b.CreationDate)
@@ -728,7 +841,6 @@ func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 				return a.ModificationDate.Before(b.ModificationDate)
 			}
 			return a.ModificationDate.After(b.ModificationDate)
-
 		case "filename":
 			if sortOrder == "asc" {
 				return a.Filename < b.Filename
@@ -739,82 +851,4 @@ func assetSortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
 			return false // No sorting for unknown fields
 		}
 	})
-}
-
-func (us *UserStorage) preparePinned() {
-
-	items, err := us.PinnedManager.GetAll()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for _, item := range items {
-
-		var with *model.PHFetchOptions
-
-		switch item.Type {
-		case "camera":
-			with = &model.PHFetchOptions{
-				IsCamera:   GetBoolPointer(true),
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "screenshot":
-			with = &model.PHFetchOptions{
-				IsScreenshot: GetBoolPointer(true),
-				SortBy:       "modificationDate",
-				SortOrder:    "acs",
-				FetchLimit:   1,
-			}
-			break
-		case "favorite":
-			with = &model.PHFetchOptions{
-				IsFavorite: GetBoolPointer(true),
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "video":
-			with = &model.PHFetchOptions{
-				MediaType:  "video",
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		case "map":
-			var assets []*model.PHAsset
-			asset := model.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
-			assets = append(assets, &asset)
-			us.PinnedManager.itemAssets[item.ID] = assets
-			break
-		case "album":
-			album, err := us.AlbumManager.Get(item.AlbumID)
-			if err != nil {
-				continue
-			}
-			item.Title = album.Title
-			with = &model.PHFetchOptions{
-				Albums:     []int{album.ID},
-				SortBy:     "modificationDate",
-				SortOrder:  "acs",
-				FetchLimit: 1,
-			}
-			break
-		}
-
-		if with == nil || item.Type == "map" {
-			continue
-		}
-
-		assets, count, err := us.FetchAssets(*with)
-		if err != nil {
-			continue
-		}
-		item.Count = count
-		us.PinnedManager.itemAssets[item.ID] = assets
-	}
 }

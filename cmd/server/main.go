@@ -193,9 +193,11 @@ func createRouter(
 		api.POST("/search/filters", searchHandler.Filters)
 
 		// Asset routes
+		api.POST("/assets/create", assetHandler.Create)
 		api.POST("/assets", assetHandler.Upload)
 		api.GET("/assets/:id", assetHandler.Get)
 		api.POST("/assets/update", assetHandler.Update)
+		api.POST("/assets/update_all", assetHandler.UpdateAll)
 		api.POST("/assets/delete", assetHandler.Delete)
 		api.POST("/assets/filters", assetHandler.Filters)
 
@@ -229,9 +231,9 @@ func createRouter(
 		api.POST("/pinned/delete", pinnedHandler.Delete)
 		api.POST("/pinned/list", pinnedHandler.GetList)
 
-		api.POST("/camera/create", cameraHandler.Create)
-		api.POST("/camera/update", cameraHandler.Update)
-		api.POST("/camera/delete", cameraHandler.Delete)
+		//api.POST("/camera/create", cameraHandler.Create)
+		//api.POST("/camera/update", cameraHandler.Update)
+		//api.POST("/camera/delete", cameraHandler.Delete)
 		api.POST("/camera/list", cameraHandler.GetList)
 
 		//api.PUT("/assets/:id", assetHandler.Update)

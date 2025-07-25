@@ -3,8 +3,8 @@ package handler
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"net/http"
 )
 
@@ -24,7 +24,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 		return
 	}
 
-	var with model.PHFetchOptions
+	var with asset_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -44,7 +44,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := model.PHFetchResult[*model.PHAsset]{
+	result := asset_model.PHFetchResult[*asset_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
@@ -61,7 +61,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	var with model.PHFetchOptions
+	var with asset_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -78,7 +78,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	result := model.PHFetchResult[*model.PHAsset]{
+	result := asset_model.PHFetchResult[*asset_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,

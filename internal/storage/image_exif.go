@@ -2,7 +2,7 @@ package storage
 
 import (
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"image"
 	"os"
 	"os/exec"
@@ -79,20 +79,20 @@ func (e *ImageExtractor) extractBasicMetadata(filePath string) (int, int, string
 }
 
 // GetMediaType determines media type from filename
-func GetMediaType(filename string) model.MediaType {
+func GetMediaType(filename string) asset_model.MediaType {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
 	case ".jpg", ".jpeg":
-		return model.ImageTypeJPEG
+		return asset_model.ImageTypeJPEG
 	case ".png":
-		return model.ImageTypePNG
+		return asset_model.ImageTypePNG
 	case ".gif":
-		return model.ImageTypeGIF
+		return asset_model.ImageTypeGIF
 	case ".mp4":
-		return model.VideoTypeMP4
+		return asset_model.VideoTypeMP4
 	case ".mov":
-		return model.VideoTypeMOV
+		return asset_model.VideoTypeMOV
 	default:
-		return model.UnknownType
+		return asset_model.UnknownType
 	}
 }

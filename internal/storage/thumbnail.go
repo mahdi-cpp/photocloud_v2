@@ -3,7 +3,7 @@ package storage
 import (
 	"bytes"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"image/jpeg"
 	"image/png"
 	"io"
@@ -46,11 +46,11 @@ func NewThumbnailService(
 }
 
 // GenerateThumbnail generates a thumbnail for an asset
-func (s *ThumbnailService) GenerateThumbnail(asset *model.PHAsset, content []byte) ([]byte, error) {
+func (s *ThumbnailService) GenerateThumbnail(asset *asset_model.PHAsset, content []byte) ([]byte, error) {
 	switch asset.MediaType {
-	case model.ImageTypeJPEG, model.ImageTypePNG, model.ImageTypeGIF:
+	case asset_model.ImageTypeJPEG, asset_model.ImageTypePNG, asset_model.ImageTypeGIF:
 		return s.generateImageThumbnail(content, asset.MediaType)
-	case model.VideoTypeMP4, model.VideoTypeMOV:
+	case asset_model.VideoTypeMP4, asset_model.VideoTypeMOV:
 		if s.videoEnabled {
 			return s.generateVideoThumbnail(asset, content)
 		}
@@ -61,7 +61,7 @@ func (s *ThumbnailService) GenerateThumbnail(asset *model.PHAsset, content []byt
 }
 
 // generateImageThumbnail creates a thumbnail from image content
-func (s *ThumbnailService) generateImageThumbnail(content []byte, mediaType model.MediaType) ([]byte, error) {
+func (s *ThumbnailService) generateImageThumbnail(content []byte, mediaType asset_model.MediaType) ([]byte, error) {
 	// Decode image
 	img, err := imaging.Decode(bytes.NewReader(content))
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *ThumbnailService) generateImageThumbnail(content []byte, mediaType mode
 	// Encode to buffer
 	var buf bytes.Buffer
 	switch mediaType {
-	case model.ImageTypePNG:
+	case asset_model.ImageTypePNG:
 		err = png.Encode(&buf, dst)
 	default:
 		// Default to JPEG for all other types
@@ -89,7 +89,7 @@ func (s *ThumbnailService) generateImageThumbnail(content []byte, mediaType mode
 }
 
 // generateVideoThumbnail creates a thumbnail from video content
-func (s *ThumbnailService) generateVideoThumbnail(asset *model.PHAsset, content []byte) ([]byte, error) {
+func (s *ThumbnailService) generateVideoThumbnail(asset *asset_model.PHAsset, content []byte) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -158,7 +158,7 @@ func (s *ThumbnailService) resizeThumbnail(thumbData []byte) ([]byte, error) {
 // GetThumbnail retrieves or generates a thumbnail for an asset
 func (s *ThumbnailService) GetThumbnail(
 	assetID int,
-	asset *model.PHAsset,
+	asset *asset_model.PHAsset,
 	width, height int,
 ) ([]byte, error) {
 	// Try to get from storage
@@ -191,7 +191,7 @@ func (s *ThumbnailService) GetThumbnail(
 func (s *ThumbnailService) ProcessUpload(
 	file multipart.File,
 	header *multipart.FileHeader,
-	asset *model.PHAsset,
+	asset *asset_model.PHAsset,
 ) ([]byte, error) {
 	// Read file content
 	content, err := io.ReadAll(file)

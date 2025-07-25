@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"net/http"
 	"strconv"
 )
@@ -43,7 +44,7 @@ func (handler *TripHandler) Create(c *gin.Context) {
 		return
 	}
 
-	update := model.AssetUpdate{AssetIds: request.AssetIds, AddTrips: []int{newItem.ID}}
+	update := asset_model.AssetUpdate{AssetIds: request.AssetIds, AddTrips: []int{newItem.ID}}
 	_, err = userStorage.UpdateAsset(update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

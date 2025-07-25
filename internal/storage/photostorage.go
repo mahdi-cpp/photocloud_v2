@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"github.com/mahdi-cpp/photocloud_v2/registery"
 	_ "image/jpeg"
 	_ "image/png"
@@ -25,7 +26,7 @@ const (
 	earthRadius = 6371 // Earth's radius in km
 )
 
-var mahdiAssets []model.PHAsset
+var mahdiAssets []asset_model.PHAsset
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
@@ -151,7 +152,7 @@ func (ps *PhotoStorage) loadOrRebuildIndex() error {
 }
 
 // UploadAsset handles file uploads
-func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
+func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*asset_model.PHAsset, error) {
 	// Check file size
 	if header.Size > ps.config.MaxUploadSize {
 		return nil, ErrFileTooLarge
@@ -184,7 +185,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 	mediaType := GetMediaType(ext)
 
 	// Handler asset
-	asset := &model.PHAsset{
+	asset := &asset_model.PHAsset{
 		ID:           ps.lastID,
 		UserID:       userID,
 		Filename:     filename,
@@ -215,7 +216,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 }
 
 // GetAsset retrieves an asset by ID
-func (ps *PhotoStorage) GetAsset(id int) (*model.PHAsset, error) {
+func (ps *PhotoStorage) GetAsset(id int) (*asset_model.PHAsset, error) {
 	// Check memory first
 	if asset, found := ps.cache.Get(id); found {
 		return asset, nil
@@ -246,7 +247,7 @@ func (ps *PhotoStorage) GetAssetContent(id int) ([]byte, error) {
 }
 
 // UpdateAsset updates asset metadata
-func (ps *PhotoStorage) UpdateAsset(assetIds []int, update model.AssetUpdate) (string, error) {
+func (ps *PhotoStorage) UpdateAsset(assetIds []int, update asset_model.AssetUpdate) (string, error) {
 
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -487,7 +488,7 @@ func (ps *PhotoStorage) RebuildIndex() error {
 }
 
 // SearchAssets searches assets based on criteria
-func (ps *PhotoStorage) SearchAssets(filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+func (ps *PhotoStorage) SearchAssets(filters asset_model.PHFetchOptions) ([]*asset_model.PHAsset, int, error) {
 
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
@@ -544,7 +545,7 @@ func (ps *PhotoStorage) SearchAssets(filters model.PHFetchOptions) ([]*model.PHA
 	}
 
 	// Convert IDs to assets
-	assets := make([]*model.PHAsset, 0, len(results))
+	assets := make([]*asset_model.PHAsset, 0, len(results))
 	for _, id := range results {
 		asset, err := ps.GetAsset(id)
 		if err != nil {
@@ -567,7 +568,7 @@ func (ps *PhotoStorage) SearchAssets(filters model.PHFetchOptions) ([]*model.PHA
 }
 
 // FilterAssets searches assets based on criteria
-func (ps *PhotoStorage) FilterAssets(filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+func (ps *PhotoStorage) FilterAssets(filters asset_model.PHFetchOptions) ([]*asset_model.PHAsset, int, error) {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
 
@@ -581,7 +582,7 @@ func (ps *PhotoStorage) FilterAssets(filters model.PHFetchOptions) ([]*model.PHA
 	criteria := buildCriteria(filters)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*model.PHAsset
+	var matches []*asset_model.PHAsset
 	totalCount := 0
 
 	for i := range mahdiAssets {
@@ -642,9 +643,9 @@ func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
 	return results
 }
 
-func buildCriteria(filters model.PHFetchOptions) searchCriteria[model.PHAsset] {
+func buildCriteria(filters asset_model.PHFetchOptions) searchCriteria[asset_model.PHAsset] {
 
-	return func(asset model.PHAsset) bool {
+	return func(asset asset_model.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
 		if filters.UserID != 0 && asset.UserID != filters.UserID {
@@ -770,7 +771,7 @@ func buildCriteria(filters model.PHFetchOptions) searchCriteria[model.PHAsset] {
 	}
 }
 
-func sortAssets(assets []*model.PHAsset, sortBy, sortOrder string) {
+func sortAssets(assets []*asset_model.PHAsset, sortBy, sortOrder string) {
 	if sortBy == "" {
 		return // No sorting requested
 	}
@@ -818,7 +819,7 @@ func (ps *PhotoStorage) nextID() int {
 }
 
 // addToIndexes adds an asset to all indexes
-func (ps *PhotoStorage) addToIndexes(asset *model.PHAsset) {
+func (ps *PhotoStorage) addToIndexes(asset *asset_model.PHAsset) {
 
 	ps.assetIndex[asset.ID] = asset.Filename
 	ps.userIndex[asset.UserID] = append(ps.userIndex[asset.UserID], asset.ID)
@@ -914,7 +915,7 @@ func (ps *PhotoStorage) removeFromIndexes(id int) {
 }
 
 // updateIndexesForAsset updates indexes when an asset changes
-func (ps *PhotoStorage) updateIndexesForAsset(asset *model.PHAsset) {
+func (ps *PhotoStorage) updateIndexesForAsset(asset *asset_model.PHAsset) {
 	ps.removeFromIndexes(asset.ID)
 	ps.addToIndexes(asset)
 }

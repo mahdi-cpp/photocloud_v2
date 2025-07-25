@@ -15,3 +15,11 @@ https://chat.deepseek.com/a/chat/s/3f303ede-2555-4166-8507-1fe60d7a8b5b
 
 ## Update & Migration
 https://chat.deepseek.com/a/chat/s/b58179c8-775e-4711-bf70-7d895cbae548
+
+## Designing Docker-like Go App Manager Strategy
+https://chat.deepseek.com/a/chat/s/476a94c1-c7e7-4fb8-a46f-13cf1b737d41
+
+
+## Cobra: Modern Go CLI Library Overview
+https://github.com/spf13/cobra
+https://chat.deepseek.com/a/chat/s/cca54f52-822d-4f86-a7e5-bc44ef9a5d19

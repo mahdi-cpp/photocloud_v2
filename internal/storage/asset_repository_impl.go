@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"mime/multipart"
 	"time"
 )
@@ -17,7 +18,7 @@ func NewAssetRepository(storage *PhotoStorage) *AssetRepositoryImpl {
 	return &AssetRepositoryImpl{storage: storage}
 }
 
-func (r *AssetRepositoryImpl) UploadAsset(ctx context.Context, asset *model.PHAsset, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
+func (r *AssetRepositoryImpl) UploadAsset(ctx context.Context, asset *asset_model.PHAsset, file multipart.File, header *multipart.FileHeader) (*asset_model.PHAsset, error) {
 
 	// Use the storage to upload the asset
 	createdAsset, err := r.storage.UploadAsset(asset.UserID, file, header)
@@ -36,7 +37,7 @@ func (r *AssetRepositoryImpl) UploadAsset(ctx context.Context, asset *model.PHAs
 	return asset, nil
 }
 
-func (r *AssetRepositoryImpl) GetAsset(ctx context.Context, assetID int) (*model.PHAsset, error) {
+func (r *AssetRepositoryImpl) GetAsset(ctx context.Context, assetID int) (*asset_model.PHAsset, error) {
 	return r.storage.GetAsset(assetID)
 }
 
@@ -44,7 +45,7 @@ func (r *AssetRepositoryImpl) GetAssetContent(ctx context.Context, assetID int) 
 	return r.storage.GetAssetContent(assetID)
 }
 
-func (r *AssetRepositoryImpl) UpdateAsset(ctx context.Context, assetIds []int, update model.AssetUpdate) (string, error) {
+func (r *AssetRepositoryImpl) UpdateAsset(ctx context.Context, assetIds []int, update asset_model.AssetUpdate) (string, error) {
 	return r.storage.UpdateAsset(assetIds, update)
 }
 
@@ -61,7 +62,7 @@ func (r *AssetRepositoryImpl) GetAssetThumbnail(ctx context.Context, assetID int
 	return r.storage.GetThumbnail(assetID, width, height)
 }
 
-func (r *AssetRepositoryImpl) GetAssetsByUser(ctx context.Context, userID int, limit, offset int) ([]*model.PHAsset, int, error) {
+func (r *AssetRepositoryImpl) GetAssetsByUser(ctx context.Context, userID int, limit, offset int) ([]*asset_model.PHAsset, int, error) {
 
 	// Get all asset IDs for user
 	assetIDs := r.storage.GetUserAssets(userID)
@@ -78,7 +79,7 @@ func (r *AssetRepositoryImpl) GetAssetsByUser(ctx context.Context, userID int, l
 	}
 
 	// Fetch assets
-	assets := make([]*model.PHAsset, 0, end-start)
+	assets := make([]*asset_model.PHAsset, 0, end-start)
 	for _, id := range assetIDs[start:end] {
 		asset, err := r.storage.GetAsset(id)
 		if err != nil {
@@ -90,12 +91,12 @@ func (r *AssetRepositoryImpl) GetAssetsByUser(ctx context.Context, userID int, l
 	return assets, total, nil
 }
 
-func (r *AssetRepositoryImpl) GetRecentAssets(ctx context.Context, userID int, days int) ([]*model.PHAsset, error) {
+func (r *AssetRepositoryImpl) GetRecentAssets(ctx context.Context, userID int, days int) ([]*asset_model.PHAsset, error) {
 
 	end := time.Now()
 	start := end.AddDate(0, 0, -days)
 
-	assets, _, err := r.storage.SearchAssets(model.PHFetchOptions{
+	assets, _, err := r.storage.SearchAssets(asset_model.PHFetchOptions{
 		UserID:    userID,
 		StartDate: &start,
 		EndDate:   &end,
@@ -107,11 +108,11 @@ func (r *AssetRepositoryImpl) CountUserAssets(ctx context.Context, userID int) (
 	return r.storage.CountUserAssets(userID), nil
 }
 
-func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+func (r *AssetRepositoryImpl) SearchAssets(ctx context.Context, filters asset_model.PHFetchOptions) ([]*asset_model.PHAsset, int, error) {
 	return r.storage.SearchAssets(filters)
 }
 
-func (r *AssetRepositoryImpl) FilterAssets(ctx context.Context, filters model.PHFetchOptions) ([]*model.PHAsset, int, error) {
+func (r *AssetRepositoryImpl) FilterAssets(ctx context.Context, filters asset_model.PHFetchOptions) ([]*asset_model.PHAsset, int, error) {
 	return r.storage.FilterAssets(filters)
 }
 

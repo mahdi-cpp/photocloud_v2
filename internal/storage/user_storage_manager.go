@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/photocloud_v2/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
 	"os"
 	"path/filepath"
 	"strings"
@@ -65,26 +65,6 @@ func (us *UserStorageManager) loadAllIcons() {
 	}
 }
 
-//func (us *UserStorageManager) UploadAsset(c *gin.Context, userID int, file multipart.File, header *multipart.FileHeader) (*model.PHAsset, error) {
-//
-//	userStorage, err := us.GetUserStorage(c, userID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return userStorage.UploadAsset(userID, file, header)
-//}
-
-//func (us *UserStorageManager) FetchAssets(c *gin.Context, with model.PHFetchOptions) ([]*model.PHAsset, int, error) {
-//
-//	userStorage, err := us.GetUserStorage(c, with.UserID)
-//	if err != nil {
-//		return nil, 0, err
-//	}
-//
-//	return userStorage.FetchAssets(with)
-//}
-
 func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
 	userStorage, err := us.GetUserStorage(c, userID)
 	if err != nil {
@@ -93,42 +73,6 @@ func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*Coll
 
 	return userStorage.PersonManager, nil
 }
-
-//func (us *UserStorageManager) UpdateAsset(c *gin.Context, assetIds []int, update model.AssetUpdate) (string, error) {
-//	userStorage, err := us.GetUserStorage(c, update.UserID)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	return userStorage.UpdateAsset(assetIds, update)
-//}
-
-//func (us *UserStorageManager) Prepare(c *gin.Context, update model.AssetUpdate) {
-//	userStorage, err := us.GetUserStorage(c, update.UserID)
-//	if err != nil {
-//		return
-//	}
-//
-//	userStorage.UpdateCollections()
-//}
-
-//func (us *UserStorageManager) GetAsset(c *gin.Context, userId int, assetId int) (*model.PHAsset, bool) {
-//	userStorage, err := us.GetUserStorage(c, userId)
-//	if err != nil {
-//		return nil, false
-//	}
-//
-//	return userStorage.GetAsset(assetId)
-//}
-
-//func (us *UserStorageManager) Delete(c *gin.Context, userId int, assetId int) error {
-//	userStorage, err := us.GetUserStorage(c, userId)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return userStorage.DeleteAsset(assetId)
-//}
 
 // periodicMaintenance runs background tasks
 func (us *UserStorageManager) periodicMaintenance() {
@@ -254,10 +198,10 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		panic(err)
 	}
 
-	userStorage.CameraManager, err = NewCollectionManager[*model.Camera]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/camera.json")
-	if err != nil {
-		panic(err)
-	}
+	//userStorage.CameraManager, err = NewCollectionManager[*model.Camera]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/camera.json")
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	userStorage.prepareAlbums()
 	userStorage.prepareTrips()
@@ -286,40 +230,3 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 func (us *UserStorageManager) GetUserManager() (*CollectionManager[*model.User], error) {
 	return us.userManager, nil
 }
-
-//func (us *UserStorageManager) GetAlbumManager(c *gin.Context, userID int) (*CollectionManager[*model.Album], error) {
-//	userStorage, err := us.GetUserStorage(c, userID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return userStorage.AlbumManager, nil
-//}
-
-//func (us *UserStorageManager) GetTripManager(c *gin.Context, userID int) (*CollectionManager[*model.Trip], error) {
-//	userStorage, err := us.GetUserStorage(c, userID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return userStorage.TripManager, nil
-//}
-
-//func (us *UserStorageManager) GetPersonManager(c *gin.Context, userID int) (*CollectionManager[*model.Person], error) {
-//	userStorage, err := us.GetUserStorage(c, userID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return userStorage.PersonManager, nil
-//}
-
-//
-//func (us *UserStorageManager) GetPinnedManager(c *gin.Context, userID int) (*CollectionManager[*model.Pinned], error) {
-//	userStorage, err := us.GetUserStorage(c, userID)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return userStorage.PinnedManager, nil
-//}

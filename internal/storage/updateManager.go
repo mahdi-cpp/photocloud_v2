@@ -3,7 +3,7 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,7 +24,7 @@ func (update *UpdateManager) updateCameraMake(id int, CameraMake string) error {
 	defer update.mutex.RUnlock()
 
 	path := update.getMetadataPath(id)
-	err := updateJSONFile(path, func(cfg *model.PHAsset) error {
+	err := updateJSONFile(path, func(cfg *asset_model.PHAsset) error {
 		cfg.CameraMake = CameraMake
 		return nil
 	})
@@ -40,7 +40,7 @@ func (update *UpdateManager) updateAlbum(id int, CameraMake string) error {
 	defer update.mutex.RUnlock()
 
 	path := update.getMetadataPath(id)
-	err := updateJSONFile(path, func(cfg *model.PHAsset) error {
+	err := updateJSONFile(path, func(cfg *asset_model.PHAsset) error {
 		cfg.CameraMake = CameraMake
 		return nil
 	})

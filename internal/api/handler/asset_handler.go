@@ -2,8 +2,8 @@ package handler
 
 import (
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/asset_model"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -22,6 +22,10 @@ func NewAssetHandler(userStorageManager *storage.UserStorageManager) *AssetHandl
 	return &AssetHandler{userStorageManager: userStorageManager}
 }
 
+func (handler *AssetHandler) Create(c *gin.Context) {
+
+}
+
 func (handler *AssetHandler) Upload(c *gin.Context) {
 
 	userID, err := getUserId(c)
@@ -38,7 +42,7 @@ func (handler *AssetHandler) Upload(c *gin.Context) {
 	defer file.Close()
 
 	// Handler asset metadata
-	asset := &model.PHAsset{
+	asset := &asset_model.PHAsset{
 		UserID:   userID,
 		Filename: header.Filename,
 	}
@@ -73,7 +77,7 @@ func (handler *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var update model.AssetUpdate
+	var update asset_model.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -82,6 +86,46 @@ func (handler *AssetHandler) Update(c *gin.Context) {
 	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	asset, err := userStorage.UpdateAsset(update)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userStorage.UpdateCollections()
+
+	// Log performance
+	duration := time.Since(startTime)
+	log.Printf("Update: assets count: %d,  (in %v)", len(update.AssetIds), duration)
+
+	c.JSON(http.StatusCreated, asset)
+}
+
+func (handler *AssetHandler) UpdateAll(c *gin.Context) {
+	startTime := time.Now()
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	var update asset_model.AssetUpdate
+	if err := c.ShouldBindJSON(&update); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	}
+
+	allAssets := userStorage.GetAllAssets()
+	for _, asset := range allAssets {
+		update.AssetIds = append(update.AssetIds, asset.ID)
 	}
 
 	asset, err := userStorage.UpdateAsset(update)
@@ -151,10 +195,10 @@ func (handler *AssetHandler) Search(c *gin.Context) {
 		}
 	}
 
-	filters := model.PHFetchOptions{
+	filters := asset_model.PHFetchOptions{
 		UserID:    userID,
 		Query:     query,
-		MediaType: model.MediaType(mediaType),
+		MediaType: asset_model.MediaType(mediaType),
 	}
 
 	if len(dateRange) > 0 {
@@ -185,7 +229,7 @@ func (handler *AssetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var request model.AssetDelete
+	var request asset_model.AssetDelete
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -218,7 +262,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters")
 
-	var with model.PHFetchOptions
+	var with asset_model.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -238,7 +282,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := model.PHFetchResult[*model.PHAsset]{
+	result := asset_model.PHFetchResult[*asset_model.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
