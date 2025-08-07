@@ -1,14 +1,15 @@
-package storage
+package storage_v1
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	asset_create "github.com/mahdi-cpp/photocloud_v2/pkg/exif"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/exif"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/registery"
-	thumbnail2 "github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -36,9 +37,9 @@ type PhotoStorage struct {
 	mu     sync.RWMutex // Protects all indexes and maps
 	cache  *LRUCache
 
-	metadata  *MetadataManager
+	metadata  *metadata.AssetMetadataManager
 	update    *UpdateManager
-	thumbnail *thumbnail2.ThumbnailManager
+	thumbnail *thumbnail.ThumbnailManager
 
 	username string
 	//userService *UserManager
@@ -83,11 +84,11 @@ func NewPhotoStorage(cfg Config) (*PhotoStorage, error) {
 		username: "Mahdi_Abdolmaleki",
 		//userService: NewUserManager(cfg.AppDir),
 
-		metadata:      NewMetadataManager(cfg.MetadataDir),
+		metadata:      metadata.NewMetadataManager(cfg.MetadataDir),
 		update:        NewUpdateManager(cfg.MetadataDir),
 		albumRegistry: registery.NewRegistry[model.Album](),
 
-		thumbnail:         thumbnail2.NewThumbnailManager(cfg.ThumbnailsDir),
+		thumbnail:         thumbnail.NewThumbnailManager(cfg.ThumbnailsDir),
 		assetIndex:        make(map[int]string),
 		userIndex:         make(map[int][]int),
 		dateIndex:         make(map[string][]int),
@@ -748,25 +749,22 @@ func buildCriteria(filters happle_models.PHFetchOptions) searchCriteria[happle_m
 		}
 
 		// Location filtering
-		if len(asset.Location) == 2 {
+		if !asset.Place.IsEmpty() {
 
 			// Near point + radius search
 			if len(filters.NearPoint) == 2 && filters.WithinRadius > 0 {
-				distance := haversineDistance(
-					filters.NearPoint[0], filters.NearPoint[1],
-					asset.Location[0], asset.Location[1],
-				)
+				distance := haversineDistance(filters.NearPoint[0], filters.NearPoint[1], asset.Place.Latitude, asset.Place.Longitude)
 				if distance > filters.WithinRadius {
 					return false
 				}
 			}
 
 			// Bounding box search
-			if len(filters.BoundingBox) == 4 {
-				if !isInBoundingBox(asset.Location, filters.BoundingBox) {
-					return false
-				}
-			}
+			//if len(filters.BoundingBox) == 4 {
+			//	if !isInBoundingBox(asset.Place.Latitude, filters.BoundingBox) {
+			//		return false
+			//	}
+			//}
 		}
 
 		return true // Asset matches all active filters

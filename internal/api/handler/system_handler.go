@@ -1,19 +1,19 @@
 package handler
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage_v1"
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 type SystemHandler struct {
-	storage *storage.PhotoStorage
+	storage *storage_v1.PhotoStorage
 }
 
-func NewSystemHandler(storage *storage.PhotoStorage) *SystemHandler {
+func NewSystemHandler(storage *storage_v1.PhotoStorage) *SystemHandler {
 	return &SystemHandler{storage: storage}
 }
 
@@ -29,7 +29,7 @@ func (h *SystemHandler) GetSystemStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, SystemStatusResponse{
 		Status:    "operational",
 		Timestamp: time.Now().Unix(),
-		Stats:     stats,
+		Stats:     storage.Stats(stats),
 		Index:     indexStatus,
 	})
 }
@@ -53,10 +53,10 @@ func (h *SystemHandler) RebuildIndex(c *gin.Context) {
 
 // SystemStatusResponse represents system health data
 type SystemStatusResponse struct {
-	Status    string              `json:"status"`
-	Timestamp int64               `json:"timestamp"`
-	Stats     storage.Stats       `json:"stats"`
-	Index     storage.IndexStatus `json:"index"`
+	Status    string                 `json:"status"`
+	Timestamp int64                  `json:"timestamp"`
+	Stats     storage.Stats          `json:"stats"`
+	Index     storage_v1.IndexStatus `json:"index"`
 }
 
 // StorageStats represents storage system statistics

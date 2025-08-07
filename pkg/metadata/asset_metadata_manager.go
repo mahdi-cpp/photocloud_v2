@@ -1,7 +1,8 @@
-package storage
+package metadata
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"log"
@@ -13,20 +14,18 @@ import (
 	"time"
 )
 
-// MetadataManager handles asset metadata
-type MetadataManager struct {
+type AssetMetadataManager struct {
 	dir   string
 	mutex sync.RWMutex
 }
 
-func NewMetadataManager(dir string) *MetadataManager {
-	return &MetadataManager{
+func NewMetadataManager(dir string) *AssetMetadataManager {
+	return &AssetMetadataManager{
 		dir: dir,
 	}
 }
 
-// SaveMetadata saves asset metadata
-func (m *MetadataManager) SaveMetadata(asset *happle_models.PHAsset) error {
+func (m *AssetMetadataManager) SaveMetadata(asset *happle_models.PHAsset) error {
 	path := m.getMetadataPath(asset.ID)
 
 	data, err := json.MarshalIndent(asset, "", "  ")
@@ -43,14 +42,13 @@ func (m *MetadataManager) SaveMetadata(asset *happle_models.PHAsset) error {
 	return os.Rename(tmpPath, path)
 }
 
-// LoadMetadata loads asset metadata
-func (m *MetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, error) {
+func (m *AssetMetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, error) {
 	path := m.getMetadataPath(id)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, ErrAssetNotFound
+			return nil, errors.New("asset not found")
 		}
 		return nil, fmt.Errorf("failed to read metadata: %w", err)
 	}
@@ -63,7 +61,7 @@ func (m *MetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, error) {
 	return &asset, nil
 }
 
-func (m *MetadataManager) LoadUserAllMetadata() (map[int]*happle_models.PHAsset, error) {
+func (m *AssetMetadataManager) LoadUserAllMetadata() (map[int]*happle_models.PHAsset, error) {
 
 	startTime := time.Now() // Capture start time
 
@@ -113,12 +111,11 @@ func (m *MetadataManager) LoadUserAllMetadata() (map[int]*happle_models.PHAsset,
 	return assets, nil
 }
 
-// DeleteMetadata removes metadata file
-func (m *MetadataManager) DeleteMetadata(id int) error {
+func (m *AssetMetadataManager) DeleteMetadata(id int) error {
 	path := m.getMetadataPath(id)
 	return os.Remove(path)
 }
 
-func (m *MetadataManager) getMetadataPath(id int) string {
+func (m *AssetMetadataManager) getMetadataPath(id int) string {
 	return filepath.Join(m.dir, fmt.Sprintf("%d.json", id))
 }

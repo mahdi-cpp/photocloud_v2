@@ -11,44 +11,51 @@ const (
 )
 
 type PHAsset struct {
-	ID          int       `json:"id"`
-	UserID      int       `json:"userId"`
-	Url         string    `json:"url"`
-	Filename    string    `json:"filename"`
-	Format      string    `json:"format"`
-	MediaType   MediaType `json:"mediaType"`
-	Orientation int       `json:"orientation"`
+	ID                  int       `json:"id"`
+	UserID              int       `json:"userId"`
+	Url                 string    `json:"url"`
+	Filename            string    `json:"filename"`
+	Format              string    `json:"format"`
+	MediaType           MediaType `json:"mediaType"`
+	Orientation         int       `json:"orientation"`
+	PixelWidth          int       `json:"pixelWidth"`
+	PixelHeight         int       `json:"pixelHeight"`
+	Place               Place     `json:"place"`
+	CameraMake          string    `json:"cameraMake"`
+	CameraModel         string    `json:"cameraModel"`
+	IsCamera            bool      `json:"isCamera"`
+	IsFavorite          bool      `json:"isFavorite"`
+	IsScreenshot        bool      `json:"isScreenshot"`
+	IsHidden            bool      `json:"isHidden"`
+	Albums              []int     `json:"albums"`
+	Trips               []int     `json:"trips"`
+	Persons             []int     `json:"persons"`
+	Duration            float64   `json:"duration"`
+	CanDelete           bool      `json:"canDelete"` // Content Availability
+	CanEditContent      bool      `json:"canEditContent"`
+	CanAddToSharedAlbum bool      `json:"canAddToSharedAlbum"`
+	IsUserLibraryAsset  bool      `json:"IsUserLibraryAsset"` // Advanced Properties
+	CapturedDate        time.Time `json:"capturedDate"`
+	CreationDate        time.Time `json:"creationDate"`
+	ModificationDate    time.Time `json:"modificationDate"`
+}
 
-	PixelWidth  int `json:"pixelWidth"`
-	PixelHeight int `json:"pixelHeight"`
+type Place struct {
+	Latitude  float64 `json:"location"`
+	Longitude float64 `json:"longitude"`
+	Country   string  `json:"country"`
+	Province  string  `json:"province"`
+	County    string  `json:"county"`
+	City      string  `json:"city"`
+	Village   string  `json:"village"`
+}
 
-	CameraMake  string    `json:"cameraMake"`
-	CameraModel string    `json:"cameraModel"`
-	Location    []float64 `json:"location"` // [latitude:longitude]
-
-	IsCamera     bool `json:"isCamera"`
-	IsFavorite   bool `json:"isFavorite"`
-	IsScreenshot bool `json:"isScreenshot"`
-	IsHidden     bool `json:"isHidden"`
-
-	Albums  []int `json:"albums"`
-	Trips   []int `json:"trips"`
-	Persons []int `json:"persons"`
-
-	// Video Properties
-	Duration float64 `json:"duration"`
-
-	// Content Availability
-	CanDelete           bool `json:"canDelete"`
-	CanEditContent      bool `json:"canEditContent"`
-	CanAddToSharedAlbum bool `json:"canAddToSharedAlbum"`
-
-	// Advanced Properties
-	IsUserLibraryAsset bool `json:"IsUserLibraryAsset"`
-
-	CapturedDate     time.Time `json:"capturedDate"`
-	CreationDate     time.Time `json:"creationDate"`
-	ModificationDate time.Time `json:"modificationDate"`
+// IsEmpty checks if the Place struct contains zero values for all its fields.
+func (p Place) IsEmpty() bool {
+	return p.Latitude == 0.0 &&
+		p.Longitude == 0.0 &&
+		p.City == "" &&
+		p.Country == ""
 }
 
 type PHFetchOptions struct {

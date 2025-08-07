@@ -99,6 +99,7 @@ func main() {
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
 
+	villageHandler := handler.NewVillageHandler(userStorageManager)
 	albumHandler := handler.NewAlbumHandler(userStorageManager)
 	tripHandler := handler.NewTripHandler(userStorageManager)
 	personHandler := handler.NewPersonsHandler(userStorageManager)
@@ -111,6 +112,7 @@ func main() {
 		userHandler,
 		assetHandler,
 		albumHandler,
+		villageHandler,
 		sharedAlbumHandler,
 		tripHandler,
 		personHandler,
@@ -167,6 +169,7 @@ func createRouter(
 	userHandler *handler.UserHandler,
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
+	villageHandler *handler.VillageHandler,
 	sharedAlbumHandler *handler.SharedAlbumHandler,
 	tripHandler *handler.TripHandler,
 	personHandler *handler.PersonHandler,
@@ -183,6 +186,7 @@ func createRouter(
 	// API routes
 	api := router.Group("/api/v1")
 	{
+
 		api.POST("/user/create", userHandler.Create)
 		api.POST("/user/update", userHandler.Update)
 		api.POST("/user/delete", userHandler.Delete)
@@ -205,6 +209,8 @@ func createRouter(
 		api.GET("/assets/download/:filename", assetHandler.OriginalDownload)
 		api.GET("/assets/download/thumbnail/:filename", assetHandler.TinyImageDownload)
 		api.GET("/assets/download/icons/:filename", assetHandler.IconDownload)
+
+		api.POST("/village/list", villageHandler.GetList)
 
 		api.POST("/album/create", albumHandler.Create)
 		api.POST("/album/update", albumHandler.Update)
@@ -236,16 +242,6 @@ func createRouter(
 		//api.POST("/camera/delete", cameraHandler.Delete)
 		api.POST("/camera/list", cameraHandler.GetList)
 
-		//api.PUT("/assets/:id", assetHandler.Update)
-		//api.DELETE("/assets/:id", assetHandler.DeleteAsset)
-		//api.GET("/assets/:id/content", assetHandler.GetAssetContent)
-		//api.GET("/assets/:id/thumbnail", assetHandler.GetAssetThumbnail)
-
-		//api.GET("/search/suggest", searchHandler.SuggestSearchTerms)
-
-		// System routes
-		//api.GET("/system/status", systemHandler.GetSystemStatus)
-		//api.POST("/system/rebuild-index", systemHandler.RebuildIndex)
 	}
 
 	// Health check endpoint

@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
+	"github.com/mahdi-cpp/photocloud_v2/internal/storage_v1"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"log"
 	"net/http"
@@ -251,16 +252,12 @@ func (handler *AssetHandler) Delete(c *gin.Context) {
 
 func (handler *AssetHandler) Filters(c *gin.Context) {
 
-	fmt.Println("Filters 1")
-
 	userID, err := getUserId(c)
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "userID must be an integer"})
 		return
 	}
-
-	fmt.Println("Filters")
 
 	var with happle_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
@@ -299,7 +296,7 @@ func (handler *AssetHandler) OriginalDownload(c *gin.Context) {
 	filename := c.Param("filename")
 	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", filename)
 
-	fileSize, err := storage.GetFileSize(filepath2)
+	fileSize, err := storage_v1.GetFileSize(filepath2)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
 		return

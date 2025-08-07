@@ -8,6 +8,7 @@ import (
 	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	"os"
 	"path/filepath"
@@ -20,7 +21,7 @@ type UserStorageManager struct {
 	mu                  sync.RWMutex
 	config              Config
 	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
-	userManager         *collection.CollectionManager[*happle_models.User]
+	userManager         *collection.Manager[*happle_models.User]
 	originalImageLoader *image_loader.ImageLoader
 	tinyImageLoader     *image_loader.ImageLoader
 	iconLoader          *image_loader.ImageLoader
@@ -68,7 +69,7 @@ func (us *UserStorageManager) loadAllIcons() {
 	}
 }
 
-func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*collection.CollectionManager[*model.Person], error) {
+func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*collection.Manager[*model.Person], error) {
 	userStorage, err := us.GetUserStorage(c, userID)
 	if err != nil {
 		return nil, err
@@ -99,8 +100,6 @@ func (us *UserStorageManager) periodicMaintenance() {
 	}
 }
 
-//----------------------------------------------------------------------------------------
-
 func (us *UserStorageManager) RepositoryGetOriginalImage(filename string) ([]byte, error) {
 	return us.originalImageLoader.LoadImage(us.ctx, filename)
 }
@@ -112,8 +111,6 @@ func (us *UserStorageManager) RepositoryGetTinyImage(filename string) ([]byte, e
 func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
 	return us.iconLoader.LoadImage(us.ctx, filename)
 }
-
-//-----------------------------------------------------------------------------------------
 
 func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserStorage, error) {
 
@@ -165,7 +162,7 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 	userStorage := &UserStorage{
 		config:            userConfig,
 		user:              *user,
-		metadata:          NewMetadataManager(userMetadataDir),
+		metadata:          metadata.NewMetadataManager(userMetadataDir),
 		thumbnail:         thumbnail.NewThumbnailManager(userThumbnailsDir),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
@@ -201,6 +198,11 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		panic(err)
 	}
 
+	userStorage.VillageManager, err = collection.NewCollectionManager[*model.Village]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/villages.json")
+	if err != nil {
+		panic(err)
+	}
+
 	//userStorage.CameraManager, err = NewCollectionManager[*model.Camera]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/camera.json")
 	//if err != nil {
 	//	panic(err)
@@ -230,6 +232,6 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 	}
 }
 
-func (us *UserStorageManager) GetUserManager() (*collection.CollectionManager[*happle_models.User], error) {
+func (us *UserStorageManager) GetUserManager() (*collection.Manager[*happle_models.User], error) {
 	return us.userManager, nil
 }

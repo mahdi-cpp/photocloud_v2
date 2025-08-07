@@ -55,6 +55,22 @@ http://localhost:8080/api/v1/album/create
 ]
 ```
 
+```json
+[
+{
+"name_fa": "دودهه", 
+"name_en": "Dodahe",
+"latitude": 35.3896,
+"longitude": 40.45789
+},
+{
+  "name_fa": "سیاه کلان",
+  "name_en": "Siahkolan",
+  "latitude": 35.3125,
+  "longitude": 40.4578
+}
+]
+```
 
 
 

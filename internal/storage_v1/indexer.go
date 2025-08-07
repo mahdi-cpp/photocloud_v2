@@ -1,4 +1,4 @@
-package storage
+package storage_v1
 
 import (
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"

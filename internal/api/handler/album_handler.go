@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
@@ -151,12 +152,19 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
+	var with happle_models.PHFetchOptions
+	if err := c.ShouldBindJSON(&with); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		fmt.Println("Invalid request")
+		return
+	}
+
 	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 	}
 
-	items, err := userStorage.AlbumManager.GetAllSorted("creationDate", "1asc")
+	items, err := userStorage.AlbumManager.GetAllSorted(with.SortBy, with.SortOrder)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return

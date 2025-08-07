@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/registery"
 	"sort"
 	"strconv"
 	"time"
 )
 
-// CollectionItem defines the required interface for managed items
 type CollectionItem interface {
 	GetID() int
 	SetID(int)
@@ -22,24 +22,22 @@ type CollectionItem interface {
 	GetModificationDate() time.Time // Added for sorting
 }
 
-// CollectionManager manages any type of collection items
-type CollectionManager[T CollectionItem] struct {
-	metadata   *MetadataControl[[]T]
+type Manager[T CollectionItem] struct {
+	metadata   *metadata.Control[[]T]
 	items      *registery.Registry[T]
 	ItemAssets map[int][]*happle_models.PHAsset
 }
 
-// SortOptions defines sorting configuration
 type SortOptions struct {
 	SortBy    string // "id", "creationDate", "modificationDate"
 	SortOrder string // "asc", "desc"
 }
 
-func NewCollectionManager[T CollectionItem](path string) (*CollectionManager[T], error) {
+func NewCollectionManager[T CollectionItem](path string) (*Manager[T], error) {
 
-	manager := &CollectionManager[T]{
+	manager := &Manager[T]{
 		items:      registery.NewRegistry[T](),
-		metadata:   NewMetadataControl[[]T](path),
+		metadata:   metadata.NewMetadataControl[[]T](path),
 		ItemAssets: make(map[int][]*happle_models.PHAsset),
 	}
 
@@ -55,7 +53,7 @@ func NewCollectionManager[T CollectionItem](path string) (*CollectionManager[T],
 	return manager, nil
 }
 
-func (manager *CollectionManager[T]) load() ([]T, error) {
+func (manager *Manager[T]) load() ([]T, error) {
 	dataPtr, err := manager.metadata.Read()
 	if err != nil {
 		return nil, err
@@ -69,7 +67,7 @@ func (manager *CollectionManager[T]) load() ([]T, error) {
 	return *dataPtr, nil
 }
 
-func (manager *CollectionManager[T]) Create(newItem T) (T, error) {
+func (manager *Manager[T]) Create(newItem T) (T, error) {
 
 	err := manager.metadata.Update(func(items *[]T) error {
 		// Generate ID
@@ -94,7 +92,7 @@ func (manager *CollectionManager[T]) Create(newItem T) (T, error) {
 	return newItem, err
 }
 
-func (manager *CollectionManager[T]) Update(updatedItem T) (T, error) {
+func (manager *Manager[T]) Update(updatedItem T) (T, error) {
 	err := manager.metadata.Update(func(items *[]T) error {
 		for i, item := range *items {
 			if item.GetID() == updatedItem.GetID() {
@@ -110,7 +108,7 @@ func (manager *CollectionManager[T]) Update(updatedItem T) (T, error) {
 	return updatedItem, err
 }
 
-func (manager *CollectionManager[T]) Delete(id int) error {
+func (manager *Manager[T]) Delete(id int) error {
 	return manager.metadata.Update(func(items *[]T) error {
 		for i, item := range *items {
 			if item.GetID() == id {
@@ -124,7 +122,7 @@ func (manager *CollectionManager[T]) Delete(id int) error {
 	})
 }
 
-func (manager *CollectionManager[T]) Get(id int) (T, error) {
+func (manager *Manager[T]) Get(id int) (T, error) {
 	item, err := manager.items.Get(strconv.Itoa(id))
 	if err != nil {
 		var zero T
@@ -133,7 +131,7 @@ func (manager *CollectionManager[T]) Get(id int) (T, error) {
 	return item, nil
 }
 
-func (manager *CollectionManager[T]) GetList(filterFunc func(T) bool) ([]T, error) {
+func (manager *Manager[T]) GetList(filterFunc func(T) bool) ([]T, error) {
 	allItems := manager.items.GetAllValues()
 	var result []T
 	for _, item := range allItems {
@@ -144,11 +142,11 @@ func (manager *CollectionManager[T]) GetList(filterFunc func(T) bool) ([]T, erro
 	return result, nil
 }
 
-func (manager *CollectionManager[T]) GetAll() ([]T, error) {
+func (manager *Manager[T]) GetAll() ([]T, error) {
 	return manager.items.GetAllValues(), nil
 }
 
-func (manager *CollectionManager[T]) GetBy(filterFunc func(T) bool) ([]T, error) {
+func (manager *Manager[T]) GetBy(filterFunc func(T) bool) ([]T, error) {
 	allItems := manager.items.GetAllValues()
 	var result []T
 	for _, item := range allItems {
@@ -159,12 +157,12 @@ func (manager *CollectionManager[T]) GetBy(filterFunc func(T) bool) ([]T, error)
 	return result, nil
 }
 
-func (manager *CollectionManager[T]) GetItemAssets(id int) ([]*happle_models.PHAsset, error) {
+func (manager *Manager[T]) GetItemAssets(id int) ([]*happle_models.PHAsset, error) {
 	return manager.ItemAssets[id], nil
 }
 
 // SortItems sorts the items according to the specified options
-func (manager *CollectionManager[T]) SortItems(items []T, options SortOptions) []T {
+func (manager *Manager[T]) SortItems(items []T, options SortOptions) []T {
 
 	if options.SortBy == "" {
 		return items
@@ -199,7 +197,7 @@ func (manager *CollectionManager[T]) SortItems(items []T, options SortOptions) [
 }
 
 // GetSortedList returns filtered and sorted items
-func (manager *CollectionManager[T]) GetSortedList(filterFunc func(T) bool, sortBy string, sortOrder string) ([]T, error) {
+func (manager *Manager[T]) GetSortedList(filterFunc func(T) bool, sortBy string, sortOrder string) ([]T, error) {
 
 	items, err := manager.GetList(filterFunc)
 	if err != nil {
@@ -212,7 +210,7 @@ func (manager *CollectionManager[T]) GetSortedList(filterFunc func(T) bool, sort
 }
 
 // GetAllSorted returns all items sorted according to options
-func (manager *CollectionManager[T]) GetAllSorted(sortBy string, sortOrder string) ([]T, error) {
+func (manager *Manager[T]) GetAllSorted(sortBy string, sortOrder string) ([]T, error) {
 	items, err := manager.GetAll()
 	if err != nil {
 		return nil, err

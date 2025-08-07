@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
-	asset_create "github.com/mahdi-cpp/photocloud_v2/pkg/exif"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/exif"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
-	thumbnail2 "github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -27,13 +28,14 @@ type UserStorage struct {
 	user               happle_models.User
 	assets             map[int]*happle_models.PHAsset
 	cameras            map[string]*happle_models.PHCollection[model.Camera]
-	AlbumManager       *collection.CollectionManager[*model.Album]
-	TripManager        *collection.CollectionManager[*model.Trip]
-	PersonManager      *collection.CollectionManager[*model.Person]
-	PinnedManager      *collection.CollectionManager[*model.Pinned]
-	SharedAlbumManager *collection.CollectionManager[*model.SharedAlbum]
-	metadata           *MetadataManager
-	thumbnail          *thumbnail2.ThumbnailManager
+	AlbumManager       *collection.Manager[*model.Album]
+	TripManager        *collection.Manager[*model.Trip]
+	PersonManager      *collection.Manager[*model.Person]
+	PinnedManager      *collection.Manager[*model.Pinned]
+	SharedAlbumManager *collection.Manager[*model.SharedAlbum]
+	VillageManager     *collection.Manager[*model.Village]
+	metadata           *metadata.AssetMetadataManager
+	thumbnail          *thumbnail.ThumbnailManager
 	lastID             int
 	lastRebuild        time.Time
 	maintenanceCtx     context.Context
@@ -629,7 +631,7 @@ func (userStorage *UserStorage) DeleteAsset(id int) error {
 	return nil
 }
 
-func assetBuildCriteria(with happle_models.PHFetchOptions) searchCriteria[happle_models.PHAsset] {
+func assetBuildCriteria(with happle_models.PHFetchOptions) assetSearchCriteria[happle_models.PHAsset] {
 
 	return func(asset happle_models.PHAsset) bool {
 
@@ -684,7 +686,6 @@ func assetBuildCriteria(with happle_models.PHFetchOptions) searchCriteria[happle
 		}
 
 		if with.NotInOneAlbum != nil {
-
 		}
 
 		if with.HideScreenshot != nil && *with.HideScreenshot == false && asset.IsScreenshot == true {
