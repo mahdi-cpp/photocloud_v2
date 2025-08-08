@@ -1,7 +1,7 @@
 package storage_v1
 
 import (
-	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/common_models"
 	"strings"
 	"sync"
 	"time"

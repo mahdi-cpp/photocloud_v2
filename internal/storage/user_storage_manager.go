@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/mahdi-cpp/api-go-pkg/collection"
+	"github.com/mahdi-cpp/api-go-pkg/common_models"
+	"github.com/mahdi-cpp/api-go-pkg/image_loader"
+	"github.com/mahdi-cpp/api-go-pkg/metadata"
+	"github.com/mahdi-cpp/api-go-pkg/network"
+	"github.com/mahdi-cpp/api-go-pkg/thumbnail"
 	"github.com/mahdi-cpp/photocloud_v2/config"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/network"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	"log"
 	"sync"
 	"time"
@@ -181,27 +181,27 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.AlbumManager, err = collection.NewCollectionManager[*model.Album](config.GetUserPath(user.PhoneNumber, "albums.json"))
+	userStorage.AlbumManager, err = collection.NewCollectionManager[*model.Album](config.GetUserPath(user.PhoneNumber, "data/albums.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.SharedAlbumManager, err = collection.NewCollectionManager[*model.SharedAlbum](config.GetUserPath(user.PhoneNumber, "shared_albums.json"))
+	userStorage.SharedAlbumManager, err = collection.NewCollectionManager[*model.SharedAlbum](config.GetUserPath(user.PhoneNumber, "data/shared_albums.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.TripManager, err = collection.NewCollectionManager[*model.Trip](config.GetUserPath(user.PhoneNumber, "trips.json"))
+	userStorage.TripManager, err = collection.NewCollectionManager[*model.Trip](config.GetUserPath(user.PhoneNumber, "data/trips.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PersonManager, err = collection.NewCollectionManager[*model.Person](config.GetUserPath(user.PhoneNumber, "persons.json"))
+	userStorage.PersonManager, err = collection.NewCollectionManager[*model.Person](config.GetUserPath(user.PhoneNumber, "data/persons.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PinnedManager, err = collection.NewCollectionManager[*model.Pinned](config.GetUserPath(user.PhoneNumber, "pinned.json"))
+	userStorage.PinnedManager, err = collection.NewCollectionManager[*model.Pinned](config.GetUserPath(user.PhoneNumber, "data/pinned.json"))
 	if err != nil {
 		panic(err)
 	}
@@ -210,11 +210,6 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 	if err != nil {
 		panic(err)
 	}
-
-	//userStorage.CameraManager, err = collection.NewCollectionManager[*model.Camera](config.GetPath("/data/camera.json"))
-	//if err != nil {
-	//	panic(err)
-	//}
 
 	userStorage.prepareAlbums()
 	userStorage.prepareTrips()

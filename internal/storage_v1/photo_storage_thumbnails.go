@@ -2,7 +2,7 @@ package storage_v1
 
 import (
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
+	"github.com/mahdi-cpp/api-go-pkg/thumbnail"
 	"log"
 	"os"
 	"path/filepath"
