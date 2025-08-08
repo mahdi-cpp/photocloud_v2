@@ -5,18 +5,12 @@ import (
 	"fmt"
 	"github.com/mahdi-cpp/api-go-pkg/collection"
 	"github.com/mahdi-cpp/api-go-pkg/common_models"
-	"github.com/mahdi-cpp/api-go-pkg/exif"
 	"github.com/mahdi-cpp/api-go-pkg/image_loader"
 	"github.com/mahdi-cpp/api-go-pkg/metadata"
 	"github.com/mahdi-cpp/api-go-pkg/thumbnail"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	_ "image/jpeg"
 	_ "image/png"
-	"io"
-	"log"
-	"mime/multipart"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -24,7 +18,7 @@ import (
 )
 
 type UserStorage struct {
-	config              Config
+	//config              Config
 	mu                  sync.RWMutex // Protects all indexes and maps
 	user                common_models.User
 	originalImageLoader *image_loader.ImageLoader
@@ -44,72 +38,73 @@ type UserStorage struct {
 	maintenanceCtx      context.Context
 	cancelMaintenance   context.CancelFunc
 	statsMu             sync.Mutex
-	stats               Stats
+	//stats               Stats
 }
 
-func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*common_models.PHAsset, error) {
-
-	// Check file size
-	if header.Size > userStorage.config.MaxUploadSize {
-		return nil, ErrFileTooLarge
-	}
-
-	// Read file content
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// Handler asset filename
-	ext := filepath.Ext(header.Filename)
-	filename := fmt.Sprintf("%d%s", 1, ext)
-	assetPath := filepath.Join(userStorage.config.AssetsDir, filename)
-
-	// Save asset file
-	if err := os.WriteFile(assetPath, fileBytes, 0644); err != nil {
-		return nil, fmt.Errorf("failed to save asset: %w", err)
-	}
-
-	// Initialize the ImageExtractor with the path to exiftool
-	extractor := asset_create.NewMetadataExtractor("/usr/local/bin/exiftool")
-
-	// Extract metadata
-	width, height, camera, err := extractor.ExtractMetadata(assetPath)
-	if err != nil {
-		log.Printf("Metadata extraction failed: %v", err)
-	}
-	mediaType := asset_create.GetMediaType(ext)
-
-	// Handler asset
-	asset := &common_models.PHAsset{
-		ID:           userStorage.lastID,
-		UserID:       userID,
-		Filename:     filename,
-		CreationDate: time.Now(),
-		MediaType:    mediaType,
-		PixelWidth:   width,
-		PixelHeight:  height,
-		CameraModel:  camera,
-	}
-
-	// Save metadata
-	if err := userStorage.metadata.SaveMetadata(asset); err != nil {
-		// Clean up asset file if metadata save fails
-		os.Remove(assetPath)
-		return nil, fmt.Errorf("failed to save metadata: %w", err)
-	}
-
-	// Add to indexes
-	//userStorage.addToIndexes(asset)
-
-	// Update stats
-	userStorage.statsMu.Lock()
-	userStorage.stats.TotalAssets++
-	userStorage.stats.Uploads24h++
-	userStorage.statsMu.Unlock()
-
-	return asset, nil
-}
+//
+//func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*common_models.PHAsset, error) {
+//
+//	// Check file size
+//	//if header.Size > userStorage.config.MaxUploadSize {
+//	//	return nil, ErrFileTooLarge
+//	//}
+//
+//	// Read file content
+//	fileBytes, err := io.ReadAll(file)
+//	if err != nil {
+//		return nil, fmt.Errorf("failed to read file: %w", err)
+//	}
+//
+//	// Handler asset filename
+//	ext := filepath.Ext(header.Filename)
+//	filename := fmt.Sprintf("%d%s", 1, ext)
+//	assetPath := filepath.Join(userStorage.config.AssetsDir, filename)
+//
+//	// Save asset file
+//	if err := os.WriteFile(assetPath, fileBytes, 0644); err != nil {
+//		return nil, fmt.Errorf("failed to save asset: %w", err)
+//	}
+//
+//	// Initialize the ImageExtractor with the path to exiftool
+//	extractor := asset_create.NewMetadataExtractor("/usr/local/bin/exiftool")
+//
+//	// Extract metadata
+//	width, height, camera, err := extractor.ExtractMetadata(assetPath)
+//	if err != nil {
+//		log.Printf("Metadata extraction failed: %v", err)
+//	}
+//	mediaType := asset_create.GetMediaType(ext)
+//
+//	// Handler asset
+//	asset := &common_models.PHAsset{
+//		ID:           userStorage.lastID,
+//		UserID:       userID,
+//		Filename:     filename,
+//		CreationDate: time.Now(),
+//		MediaType:    mediaType,
+//		PixelWidth:   width,
+//		PixelHeight:  height,
+//		CameraModel:  camera,
+//	}
+//
+//	// Save metadata
+//	if err := userStorage.metadata.SaveMetadata(asset); err != nil {
+//		// Clean up asset file if metadata save fails
+//		os.Remove(assetPath)
+//		return nil, fmt.Errorf("failed to save metadata: %w", err)
+//	}
+//
+//	// Add to indexes
+//	//userStorage.addToIndexes(asset)
+//
+//	// Update stats
+//	userStorage.statsMu.Lock()
+//	userStorage.stats.TotalAssets++
+//	userStorage.stats.Uploads24h++
+//	userStorage.statsMu.Unlock()
+//
+//	return asset, nil
+//}
 
 func (userStorage *UserStorage) GetAsset(assetId int) (*common_models.PHAsset, bool) {
 	asset, exists := userStorage.assets[assetId]
@@ -120,16 +115,16 @@ func (userStorage *UserStorage) GetAllAssets() map[int]*common_models.PHAsset {
 	return userStorage.assets
 }
 
-func (userStorage *UserStorage) GetAssetContent(id int) ([]byte, error) {
-	// Get asset to resolve filename
-	asset, exists := userStorage.GetAsset(id)
-	if !exists {
-		return nil, fmt.Errorf("asset not found")
-	}
-
-	assetPath := filepath.Join(userStorage.config.AssetsDir, asset.Filename)
-	return os.ReadFile(assetPath)
-}
+//func (userStorage *UserStorage) GetAssetContent(id int) ([]byte, error) {
+//	// Get asset to resolve filename
+//	asset, exists := userStorage.GetAsset(id)
+//	if !exists {
+//		return nil, fmt.Errorf("asset not found")
+//	}
+//
+//	assetPath := filepath.Join(userStorage.config.AssetsDir, asset.Filename)
+//	return os.ReadFile(assetPath)
+//}
 
 func (userStorage *UserStorage) UpdateAsset(update common_models.AssetUpdate) (string, error) {
 
@@ -318,11 +313,11 @@ func (userStorage *UserStorage) UpdateCollections() {
 	userStorage.preparePinned()
 }
 
-func (userStorage *UserStorage) GetSystemStats() Stats {
-	userStorage.statsMu.Lock()
-	defer userStorage.statsMu.Unlock()
-	return userStorage.stats
-}
+//func (userStorage *UserStorage) GetSystemStats() Stats {
+//	userStorage.statsMu.Lock()
+//	defer userStorage.statsMu.Unlock()
+//	return userStorage.stats
+//}
 
 func (userStorage *UserStorage) FetchAssets(with common_models.PHFetchOptions) ([]*common_models.PHAsset, int, error) {
 
@@ -627,9 +622,9 @@ func (userStorage *UserStorage) DeleteAsset(id int) error {
 	//userStorage.memory.Remove(id)
 
 	// Update stats
-	userStorage.statsMu.Lock()
-	userStorage.stats.TotalAssets--
-	userStorage.statsMu.Unlock()
+	//userStorage.statsMu.Lock()
+	//userStorage.stats.TotalAssets--
+	//userStorage.statsMu.Unlock()
 
 	return nil
 }

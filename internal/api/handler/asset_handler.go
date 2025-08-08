@@ -46,16 +46,16 @@ func (handler *AssetHandler) Upload(c *gin.Context) {
 		Filename: header.Filename,
 	}
 
-	userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-	}
+	//userStorage, err := handler.userStorageManager.GetUserStorage(c, userID)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{"error": err})
+	//}
 
-	asset, err = userStorage.UploadAsset(asset.UserID, file, header)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
-		return
-	}
+	//asset, err = userStorage.UploadAsset(asset.UserID, file, header)
+	//if err != nil {
+	//	c.JSON(http.StatusInternalServerError, gin.H{"error": "Processing failed"})
+	//	return
+	//}
 
 	//asset, err := handler.userStorageManager.Upload(c, userID, file, header)
 	//if err != nil {

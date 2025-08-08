@@ -4,110 +4,53 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/mahdi-cpp/photocloud_v2/config"
 	"github.com/mahdi-cpp/photocloud_v2/internal/api/handler"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/spf13/viper"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
 
-	// Initialize loader (with local image directory)
-	//loader := image_loader.NewImageLoader(5000, "", 10*time.Minute)
-
-	//// Scan metadata directory
-	//files, err := os.ReadDir("/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets")
-	//if err != nil {
-	//	fmt.Println("failed to read metadata directory: %w", err)
-	//}
-	//
-	//var images []string
-	//for _, file := range files {
-	//	fmt.Println(file.Title())
-	//	images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Title())
-	//}
-	//
-	//// Load various image types
-	//images := []string{
-	//	//"/var/cloud/upload/upload5/20190809_000407.jpg",
-	//	//"Screenshot_20240113_180718_Instagram.jpg",
-	//	//"Screenshot_20240120_020041_Instagram.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/18.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/17.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/25.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/26.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/27.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/28.jpg",
-	//	"/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets/42.jpg",
-	//
-	//	//"https://mahdiali.s3.ir-thr-at1.arvanstorage.ir/%D9%86%D9%82%D8%B4%D9%87-%D8%AA%D8%A7%DB%8C%D9%85%D8%B1-%D8%B1%D8%A7%D9%87-%D9%BE%D9%84%D9%87-%D8%B3%D9%87-%D8%B3%DB%8C%D9%85.jpg?versionId=", // Network URL
-	//	//"https://mahdicpp.s3.ir-thr-at1.arvanstorage.ir/0f470b87c13e25bc4211683711e71e2a.jpg?versionId=",
-	//}
-	//
-	//ctx := context.Background()
-	//for _, img := range images {
-	//	data, err := loader.LoadImage(ctx, img)
-	//	if err != nil {
-	//		log.Printf("Failed to load %s: %v", img, err)
-	//		continue
-	//	}
-	//	fmt.Printf("Loaded %s (%d kB)\n", img, len(data)/1024)
-	//}
-
-	//Print metrics
-	//f, n, g, e, avg := loader.Metrics()
-	//fmt.Printf("\nLoader Metrics:\n")
-	//fmt.Printf("File loads: %d\n", f)
-	//fmt.Printf("Network loads: %d\n", n)
-	//fmt.Printf("Generated images: %d\n", g)
-	//fmt.Printf("Errors: %d\n", e)
-	//fmt.Printf("Avg load time: %s\n", avg)
-
-	//Get metrics
-	//loadMetric := loader.Metrics()
-	//fmt.Printf("CurrentCacheBytes: %s\n", image_loader.FormatBytes(loadMetric.CurrentCacheBytes))
-
 	// Load configuration
-	cfg, err := loadConfig()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
+	//cfg, err := loadConfig()
+	//if err != nil {
+	//	log.Fatalf("Failed to load configuration: %v", err)
+	//}
 
-	storageCfg := storage.Config{
-		AppDir:               cfg.Storage.AppDir,
-		AssetsDir:            cfg.Storage.AssetsDir,
-		MetadataDir:          cfg.Storage.MetadataDir,
-		ThumbnailsDir:        cfg.Storage.ThumbnailsDir,
-		IndexFile:            cfg.Storage.IndexFile,
-		CacheSize:            cfg.Storage.Cache.Size,
-		AlbumCollectionFile:  cfg.Storage.AlbumCollectionFile,
-		TripCollectionFile:   cfg.Storage.TripCollectionFile,
-		PersonCollectionFile: cfg.Storage.PersonCollectionFile,
-	}
+	//storageCfg := storage.Config{
+	//	AppDir:               cfg.Storage.AppDir,
+	//	AssetsDir:            cfg.Storage.AssetsDir,
+	//	MetadataDir:          cfg.Storage.MetadataDir,
+	//	ThumbnailsDir:        cfg.Storage.ThumbnailsDir,
+	//	IndexFile:            cfg.Storage.IndexFile,
+	//	CacheSize:            cfg.Storage.Cache.Size,
+	//	AlbumCollectionFile:  cfg.Storage.AlbumCollectionFile,
+	//	TripCollectionFile:   cfg.Storage.TripCollectionFile,
+	//	PersonCollectionFile: cfg.Storage.PersonCollectionFile,
+	//}
 
-	userStorageManager, err := storage.NewUserStorageManager(storageCfg)
+	userStorageManager, err := storage.NewUserStorageManager()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
-
-	villageHandler := handler.NewVillageHandler(userStorageManager)
 	albumHandler := handler.NewAlbumHandler(userStorageManager)
 	tripHandler := handler.NewTripHandler(userStorageManager)
 	personHandler := handler.NewPersonsHandler(userStorageManager)
 	pinnedHandler := handler.NewPinnedHandler(userStorageManager)
 	cameraHandler := handler.NewCameraHandler(userStorageManager)
 	sharedAlbumHandler := handler.NewSharedAlbumHandler(userStorageManager)
+	villageHandler := handler.NewVillageHandler(userStorageManager)
 
 	// Handler Gin router
-	router := createRouter(cfg,
+	router := createRouter(
 		assetHandler,
 		albumHandler,
 		villageHandler,
@@ -119,51 +62,50 @@ func main() {
 		cameraHandler)
 
 	// Start server
-	startServer(cfg, router)
+	startServer(router)
 }
 
-func loadConfig() (*config.Config, error) {
-
-	// Initialize Viper
-	v := viper.New()
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
-	v.AddConfigPath("./config")
-	v.AutomaticEnv()
-	v.SetEnvPrefix("PHOTOCLOUD")
-
-	// Set default values
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("server.port", 8080)
-	v.SetDefault("server.mode", "release")
-	v.SetDefault("storage.cache.size", 1000)
-	v.SetDefault("media.thumbnails.default_width", 300)
-	v.SetDefault("media.thumbnails.default_height", 300)
-	v.SetDefault("auth.jwt.expiration", "720h") // 30 days
-
-	// Read configuration
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read config: %w", err)
-		}
-		log.Println("Config file not found, using environment variables and defaults")
-	}
-
-	var cfg config.Config
-	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
-	}
-
-	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
-	}
-
-	return &cfg, nil
-}
+//func loadConfig() (error) {
+//
+//	// Initialize Viper
+//	v := viper.New()
+//	v.SetConfigName("config")
+//	v.SetConfigType("yaml")
+//	v.AddConfigPath("./config")
+//	v.AutomaticEnv()
+//	v.SetEnvPrefix("PHOTOCLOUD")
+//
+//	// Set default values
+//	v.SetDefault("server.host", "0.0.0.0")
+//	v.SetDefault("server.port", 8080)
+//	v.SetDefault("server.mode", "release")
+//	v.SetDefault("storage.cache.size", 1000)
+//	v.SetDefault("media.thumbnails.default_width", 300)
+//	v.SetDefault("media.thumbnails.default_height", 300)
+//	v.SetDefault("auth.jwt.expiration", "720h") // 30 days
+//
+//	// Read configuration
+//	if err := v.ReadInConfig(); err != nil {
+//		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+//			return nil, fmt.Errorf("failed to read config: %w", err)
+//		}
+//		log.Println("Config file not found, using environment variables and defaults")
+//	}
+//
+//	var cfg config.Config
+//	if err := v.Unmarshal(&cfg); err != nil {
+//		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+//	}
+//
+//	// Validate configuration
+//	if err := cfg.Validate(); err != nil {
+//		return nil, fmt.Errorf("invalid configuration: %w", err)
+//	}
+//
+//	return &cfg, nil
+//}
 
 func createRouter(
-	cfg *config.Config,
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
 	villageHandler *handler.VillageHandler,
@@ -174,8 +116,9 @@ func createRouter(
 	pinnedHandler *handler.PinnedHandler,
 	cameraHandler *handler.CameraHandler,
 ) *gin.Engine {
+
 	// Set Gin mode
-	gin.SetMode(cfg.Server.Mode)
+	gin.SetMode("release")
 
 	// Handler router with default middleware
 	router := gin.Default()
@@ -244,11 +187,11 @@ func createRouter(
 	return router
 }
 
-func startServer(cfg *config.Config, router *gin.Engine) {
+func startServer(router *gin.Engine) {
 
 	// Handler HTTP server
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
+		Addr:    fmt.Sprintf("%s:%d", "0.0.0.0", 8081),
 		Handler: router,
 	}
 
@@ -266,7 +209,7 @@ func startServer(cfg *config.Config, router *gin.Engine) {
 	<-quit
 	log.Println("Shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.GracefulTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

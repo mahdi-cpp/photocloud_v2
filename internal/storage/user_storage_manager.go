@@ -19,20 +19,18 @@ import (
 
 type UserStorageManager struct {
 	mu           sync.RWMutex
-	config       Config
 	users        map[int]*common_models.User
 	userStorages map[int]*UserStorage // Maps user IDs to their UserStorage
 	iconLoader   *image_loader.ImageLoader
 	ctx          context.Context
 }
 
-func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
+func NewUserStorageManager() (*UserStorageManager, error) {
 
 	// Handler the manager
 	manager := &UserStorageManager{
 		userStorages: make(map[int]*UserStorage),
 		users:        make(map[int]*common_models.User),
-		config:       cfg,
 		ctx:          context.Background(),
 	}
 
@@ -159,13 +157,12 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 	//}
 
 	// Handler user-specific config
-	userConfig := us.config
-	userConfig.MetadataDir = config.GetUserPath(user.PhoneNumber, "assets")
-	userConfig.ThumbnailsDir = config.GetUserPath(user.PhoneNumber, "thumbnails")
+	//userConfig := us.config
+	//userConfig.MetadataDir = config.GetUserPath(user.PhoneNumber, "assets")
+	//userConfig.ThumbnailsDir = config.GetUserPath(user.PhoneNumber, "thumbnails")
 
 	// Handler new userStorage for this user
 	userStorage := &UserStorage{
-		config:            userConfig,
 		user:              *user,
 		metadata:          metadata.NewMetadataManager(config.GetUserPath(user.PhoneNumber, "metadata")),
 		thumbnail:         thumbnail.NewThumbnailManager(config.GetUserPath(user.PhoneNumber, "thumbnails")),
