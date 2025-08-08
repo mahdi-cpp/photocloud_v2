@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,7 +25,7 @@ func NewMetadataManager(dir string) *AssetMetadataManager {
 	}
 }
 
-func (m *AssetMetadataManager) SaveMetadata(asset *happle_models.PHAsset) error {
+func (m *AssetMetadataManager) SaveMetadata(asset *common_models.PHAsset) error {
 	path := m.getMetadataPath(asset.ID)
 
 	data, err := json.MarshalIndent(asset, "", "  ")
@@ -42,7 +42,7 @@ func (m *AssetMetadataManager) SaveMetadata(asset *happle_models.PHAsset) error 
 	return os.Rename(tmpPath, path)
 }
 
-func (m *AssetMetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, error) {
+func (m *AssetMetadataManager) LoadMetadata(id int) (*common_models.PHAsset, error) {
 	path := m.getMetadataPath(id)
 
 	data, err := os.ReadFile(path)
@@ -53,7 +53,7 @@ func (m *AssetMetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, err
 		return nil, fmt.Errorf("failed to read metadata: %w", err)
 	}
 
-	var asset happle_models.PHAsset
+	var asset common_models.PHAsset
 	if err := json.Unmarshal(data, &asset); err != nil {
 		return nil, fmt.Errorf("failed to parse metadata: %w", err)
 	}
@@ -61,11 +61,11 @@ func (m *AssetMetadataManager) LoadMetadata(id int) (*happle_models.PHAsset, err
 	return &asset, nil
 }
 
-func (m *AssetMetadataManager) LoadUserAllMetadata() (map[int]*happle_models.PHAsset, error) {
+func (m *AssetMetadataManager) LoadUserAllMetadata() (map[int]*common_models.PHAsset, error) {
 
 	startTime := time.Now() // Capture start time
 
-	var assets = make(map[int]*happle_models.PHAsset)
+	var assets = make(map[int]*common_models.PHAsset)
 
 	// Scan metadata directory
 	files, err := os.ReadDir(m.dir)

@@ -1,7 +1,7 @@
 # Server configuration
 server:
   host: "0.0.0.0" # Bind address
-  port: 8080       # Listen port
+  port: 8081       # Listen port
   mode: "release"  # gin mode: debug, release, test
   graceful_timeout: 30s # Graceful shutdown timeout
   max_body_size: "100MB" # Max request body size
@@ -13,7 +13,7 @@ server:
 
 # Storage system configuration
 storage:
-  app_dir: "/media/mahdi/Cloud/apps/Photos"
+  app_dir: "/media/mahdi/Cloud/apps/com.helium.photos"
   assets_dir: "assets"
   metadata_dir: "metadata"
   thumbnails_dir: "thumbnails"

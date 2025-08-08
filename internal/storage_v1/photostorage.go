@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/exif"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/registery"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
@@ -29,7 +29,7 @@ const (
 	earthRadius = 6371 // Earth's radius in km
 )
 
-var mahdiAssets []happle_models.PHAsset
+var mahdiAssets []common_models.PHAsset
 
 // PhotoStorage implements the core storage functionality
 type PhotoStorage struct {
@@ -155,7 +155,7 @@ func (ps *PhotoStorage) loadOrRebuildIndex() error {
 }
 
 // UploadAsset handles file uploads
-func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*happle_models.PHAsset, error) {
+func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*common_models.PHAsset, error) {
 	// Check file size
 	if header.Size > ps.config.MaxUploadSize {
 		return nil, ErrFileTooLarge
@@ -188,7 +188,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 	mediaType := asset_create.GetMediaType(ext)
 
 	// Handler asset
-	asset := &happle_models.PHAsset{
+	asset := &common_models.PHAsset{
 		ID:           ps.lastID,
 		UserID:       userID,
 		Filename:     filename,
@@ -219,7 +219,7 @@ func (ps *PhotoStorage) UploadAsset(userID int, file multipart.File, header *mul
 }
 
 // GetAsset retrieves an asset by ID
-func (ps *PhotoStorage) GetAsset(id int) (*happle_models.PHAsset, error) {
+func (ps *PhotoStorage) GetAsset(id int) (*common_models.PHAsset, error) {
 	// Check memory first
 	if asset, found := ps.cache.Get(id); found {
 		return asset, nil
@@ -250,7 +250,7 @@ func (ps *PhotoStorage) GetAssetContent(id int) ([]byte, error) {
 }
 
 // UpdateAsset updates asset metadata
-func (ps *PhotoStorage) UpdateAsset(assetIds []int, update happle_models.AssetUpdate) (string, error) {
+func (ps *PhotoStorage) UpdateAsset(assetIds []int, update common_models.AssetUpdate) (string, error) {
 
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -491,7 +491,7 @@ func (ps *PhotoStorage) RebuildIndex() error {
 }
 
 // SearchAssets searches assets based on criteria
-func (ps *PhotoStorage) SearchAssets(filters happle_models.PHFetchOptions) ([]*happle_models.PHAsset, int, error) {
+func (ps *PhotoStorage) SearchAssets(filters common_models.PHFetchOptions) ([]*common_models.PHAsset, int, error) {
 
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
@@ -548,7 +548,7 @@ func (ps *PhotoStorage) SearchAssets(filters happle_models.PHFetchOptions) ([]*h
 	}
 
 	// Convert IDs to assets
-	assets := make([]*happle_models.PHAsset, 0, len(results))
+	assets := make([]*common_models.PHAsset, 0, len(results))
 	for _, id := range results {
 		asset, err := ps.GetAsset(id)
 		if err != nil {
@@ -571,7 +571,7 @@ func (ps *PhotoStorage) SearchAssets(filters happle_models.PHFetchOptions) ([]*h
 }
 
 // FilterAssets searches assets based on criteria
-func (ps *PhotoStorage) FilterAssets(filters happle_models.PHFetchOptions) ([]*happle_models.PHAsset, int, error) {
+func (ps *PhotoStorage) FilterAssets(filters common_models.PHFetchOptions) ([]*common_models.PHAsset, int, error) {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
 
@@ -585,7 +585,7 @@ func (ps *PhotoStorage) FilterAssets(filters happle_models.PHFetchOptions) ([]*h
 	criteria := buildCriteria(filters)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*happle_models.PHAsset
+	var matches []*common_models.PHAsset
 	totalCount := 0
 
 	for i := range mahdiAssets {
@@ -646,9 +646,9 @@ func search[T any](slice []T, criteria searchCriteria[T]) []IndexedItem[T] {
 	return results
 }
 
-func buildCriteria(filters happle_models.PHFetchOptions) searchCriteria[happle_models.PHAsset] {
+func buildCriteria(filters common_models.PHFetchOptions) searchCriteria[common_models.PHAsset] {
 
-	return func(asset happle_models.PHAsset) bool {
+	return func(asset common_models.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
 		if filters.UserID != 0 && asset.UserID != filters.UserID {
@@ -771,7 +771,7 @@ func buildCriteria(filters happle_models.PHFetchOptions) searchCriteria[happle_m
 	}
 }
 
-func sortAssets(assets []*happle_models.PHAsset, sortBy, sortOrder string) {
+func sortAssets(assets []*common_models.PHAsset, sortBy, sortOrder string) {
 	if sortBy == "" {
 		return // No sorting requested
 	}
@@ -819,7 +819,7 @@ func (ps *PhotoStorage) nextID() int {
 }
 
 // addToIndexes adds an asset to all indexes
-func (ps *PhotoStorage) addToIndexes(asset *happle_models.PHAsset) {
+func (ps *PhotoStorage) addToIndexes(asset *common_models.PHAsset) {
 
 	ps.assetIndex[asset.ID] = asset.Filename
 	ps.userIndex[asset.UserID] = append(ps.userIndex[asset.UserID], asset.ID)
@@ -915,7 +915,7 @@ func (ps *PhotoStorage) removeFromIndexes(id int) {
 }
 
 // updateIndexesForAsset updates indexes when an asset changes
-func (ps *PhotoStorage) updateIndexesForAsset(asset *happle_models.PHAsset) {
+func (ps *PhotoStorage) updateIndexesForAsset(asset *common_models.PHAsset) {
 	ps.removeFromIndexes(asset.ID)
 	ps.addToIndexes(asset)
 }

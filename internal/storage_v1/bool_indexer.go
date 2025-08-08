@@ -1,7 +1,7 @@
 package storage_v1
 
 import (
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 )
 
 // BoolIndexer indexes assets based on boolean fields
@@ -22,7 +22,7 @@ func NewBoolIndexer(fieldName string) *BoolIndexer {
 }
 
 // Add adds an asset to the index
-func (idx *BoolIndexer) Add(asset *happle_models.PHAsset) {
+func (idx *BoolIndexer) Add(asset *common_models.PHAsset) {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
 
@@ -88,7 +88,7 @@ func (idx *BoolIndexer) Filter(ids []int, query interface{}) []int {
 }
 
 // getFieldValue extracts the boolean field value using reflection
-func (idx *BoolIndexer) getFieldValue(asset *happle_models.PHAsset) bool {
+func (idx *BoolIndexer) getFieldValue(asset *common_models.PHAsset) bool {
 	switch idx.fieldName {
 	case "IsFavorite":
 		return asset.IsFavorite

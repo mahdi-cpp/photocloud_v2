@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"net/http"
 )
 
@@ -128,7 +128,7 @@ func (handler *CameraHandler) GetList(c *gin.Context) {
 	//	return
 	//}
 
-	var a []*happle_models.PHCollection[model.Camera]
+	var a []*common_models.PHCollection[model.Camera]
 	result := userStorage.GetAllCameras()
 	for _, camera := range result {
 		a = append(a, camera)

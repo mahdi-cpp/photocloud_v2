@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"net/http"
 )
 
@@ -24,7 +24,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 		return
 	}
 
-	var with happle_models.PHFetchOptions
+	var with common_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -44,7 +44,7 @@ func (handler *SearchHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := happle_models.PHFetchResult[*happle_models.PHAsset]{
+	result := common_models.PHFetchResult[*common_models.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
@@ -61,7 +61,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	var with happle_models.PHFetchOptions
+	var with common_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -78,7 +78,7 @@ func (handler *SearchHandler) Search(c *gin.Context) {
 		return
 	}
 
-	result := happle_models.PHFetchResult[*happle_models.PHAsset]{
+	result := common_models.PHFetchResult[*common_models.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,

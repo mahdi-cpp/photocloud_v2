@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"net/http"
 )
 
@@ -27,7 +27,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var request happle_models.CollectionRequest
+	var request common_models.CollectionRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -44,7 +44,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 		return
 	}
 
-	update := happle_models.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
+	update := common_models.AssetUpdate{AssetIds: request.AssetIds, AddAlbums: []int{newItem.ID}}
 	_, err = userStorage.UpdateAsset(update)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -53,7 +53,7 @@ func (handler *AlbumHandler) Create(c *gin.Context) {
 
 	userStorage.UpdateCollections()
 
-	c.JSON(http.StatusCreated, happle_models.CollectionResponse{
+	c.JSON(http.StatusCreated, common_models.CollectionResponse{
 		ID:    newItem.ID,
 		Title: newItem.Title,
 	})
@@ -152,7 +152,7 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	var with happle_models.PHFetchOptions
+	var with common_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -170,13 +170,13 @@ func (handler *AlbumHandler) GetListV2(c *gin.Context) {
 		return
 	}
 
-	result := happle_models.PHCollectionList[*model.Album]{
-		Collections: make([]*happle_models.PHCollection[*model.Album], len(items)),
+	result := common_models.PHCollectionList[*model.Album]{
+		Collections: make([]*common_models.PHCollection[*model.Album], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := userStorage.AlbumManager.GetItemAssets(item.ID)
-		result.Collections[i] = &happle_models.PHCollection[*model.Album]{
+		result.Collections[i] = &common_models.PHCollection[*model.Album]{
 			Item:   item,
 			Assets: assets,
 		}

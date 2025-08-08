@@ -95,7 +95,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	userHandler := handler.NewUserHandler(userStorageManager)
 	assetHandler := handler.NewAssetHandler(userStorageManager)
 	searchHandler := handler.NewSearchHandler(userStorageManager)
 
@@ -109,7 +108,6 @@ func main() {
 
 	// Handler Gin router
 	router := createRouter(cfg,
-		userHandler,
 		assetHandler,
 		albumHandler,
 		villageHandler,
@@ -166,7 +164,6 @@ func loadConfig() (*config.Config, error) {
 
 func createRouter(
 	cfg *config.Config,
-	userHandler *handler.UserHandler,
 	assetHandler *handler.AssetHandler,
 	albumHandler *handler.AlbumHandler,
 	villageHandler *handler.VillageHandler,
@@ -186,11 +183,6 @@ func createRouter(
 	// API routes
 	api := router.Group("/api/v1")
 	{
-
-		api.POST("/user/create", userHandler.Create)
-		api.POST("/user/update", userHandler.Update)
-		api.POST("/user/delete", userHandler.Delete)
-		api.POST("/user/list", userHandler.GetCollectionList)
 
 		// Search routes
 		api.GET("/search", searchHandler.Search)

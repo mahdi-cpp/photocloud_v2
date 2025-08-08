@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"net/http"
 )
 
@@ -40,12 +40,12 @@ func (handler *VillageHandler) GetList(c *gin.Context) {
 
 	fmt.Println("villages: ", len(items))
 
-	result := happle_models.PHCollectionList[*model.Village]{
-		Collections: make([]*happle_models.PHCollection[*model.Village], len(items)),
+	result := common_models.PHCollectionList[*model.Village]{
+		Collections: make([]*common_models.PHCollection[*model.Village], len(items)),
 	}
 
 	for i, item := range items {
-		result.Collections[i] = &happle_models.PHCollection[*model.Village]{
+		result.Collections[i] = &common_models.PHCollection[*model.Village]{
 			Item: item,
 		}
 	}

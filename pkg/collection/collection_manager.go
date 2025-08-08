@@ -5,7 +5,7 @@ package collection
 import (
 	"errors"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/registery"
 	"sort"
@@ -25,7 +25,7 @@ type CollectionItem interface {
 type Manager[T CollectionItem] struct {
 	metadata   *metadata.Control[[]T]
 	items      *registery.Registry[T]
-	ItemAssets map[int][]*happle_models.PHAsset
+	ItemAssets map[int][]*common_models.PHAsset
 }
 
 type SortOptions struct {
@@ -38,7 +38,7 @@ func NewCollectionManager[T CollectionItem](path string) (*Manager[T], error) {
 	manager := &Manager[T]{
 		items:      registery.NewRegistry[T](),
 		metadata:   metadata.NewMetadataControl[[]T](path),
-		ItemAssets: make(map[int][]*happle_models.PHAsset),
+		ItemAssets: make(map[int][]*common_models.PHAsset),
 	}
 
 	items, err := manager.load()
@@ -157,7 +157,7 @@ func (manager *Manager[T]) GetBy(filterFunc func(T) bool) ([]T, error) {
 	return result, nil
 }
 
-func (manager *Manager[T]) GetItemAssets(id int) ([]*happle_models.PHAsset, error) {
+func (manager *Manager[T]) GetItemAssets(id int) ([]*common_models.PHAsset, error) {
 	return manager.ItemAssets[id], nil
 }
 

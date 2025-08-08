@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"net/http"
 	"sort"
 	"strconv"
@@ -131,13 +131,13 @@ func (handler *PinnedHandler) GetList(c *gin.Context) {
 	items = sortPinnedCollectionByIndex(items)
 
 	// Create collection list without interface constraint
-	result := happle_models.PHCollectionList[*model.Pinned]{
-		Collections: make([]*happle_models.PHCollection[*model.Pinned], len(items)),
+	result := common_models.PHCollectionList[*model.Pinned]{
+		Collections: make([]*common_models.PHCollection[*model.Pinned], len(items)),
 	}
 
 	for i, item := range items {
 		assets, _ := userStorage.PinnedManager.GetItemAssets(item.ID)
-		result.Collections[i] = &happle_models.PHCollection[*model.Pinned]{
+		result.Collections[i] = &common_models.PHCollection[*model.Pinned]{
 			Item:   item,
 			Assets: assets,
 		}

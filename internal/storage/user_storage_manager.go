@@ -4,49 +4,57 @@ import (
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/mahdi-cpp/photocloud_v2/config"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/network"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
-	"os"
-	"path/filepath"
-	"strings"
+	"log"
 	"sync"
 	"time"
 )
 
 type UserStorageManager struct {
-	mu                  sync.RWMutex
-	config              Config
-	storages            map[int]*UserStorage // Maps user IDs to their UserStorage
-	userManager         *collection.Manager[*happle_models.User]
-	originalImageLoader *image_loader.ImageLoader
-	tinyImageLoader     *image_loader.ImageLoader
-	iconLoader          *image_loader.ImageLoader
-	ctx                 context.Context
+	mu           sync.RWMutex
+	config       Config
+	users        map[int]*common_models.User
+	userStorages map[int]*UserStorage // Maps user IDs to their UserStorage
+	iconLoader   *image_loader.ImageLoader
+	ctx          context.Context
 }
 
 func NewUserStorageManager(cfg Config) (*UserStorageManager, error) {
 
 	// Handler the manager
 	manager := &UserStorageManager{
-		storages: make(map[int]*UserStorage),
-		config:   cfg,
-		ctx:      context.Background(),
+		userStorages: make(map[int]*UserStorage),
+		users:        make(map[int]*common_models.User),
+		config:       cfg,
+		ctx:          context.Background(),
 	}
 
-	var err error
-	manager.userManager, err = collection.NewCollectionManager[*happle_models.User]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/users.json")
+	userControl := network.NewNetworkControl[[]common_models.User]("http://localhost:8080/api/v1/user/")
+
+	// Make request (nil body if not needed)
+	users, err := userControl.Read("list", nil)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error: %v", err)
 	}
 
-	manager.originalImageLoader = image_loader.NewImageLoader(50, "/media/mahdi/Cloud/apps/Photos", 5*time.Minute)
-	manager.tinyImageLoader = image_loader.NewImageLoader(30000, "/media/mahdi/Cloud/apps/Photos", 60*time.Minute)
-	manager.iconLoader = image_loader.NewImageLoader(1000, "/var/cloud/icons", 0)
+	// Use the data
+	for _, user := range *users {
+		fmt.Printf("%d: %s (%s %s)\n",
+			user.ID,
+			user.Username,
+			user.FirstName,
+			user.LastName)
+		manager.users[user.ID] = &user
+	}
 
+	manager.iconLoader = image_loader.NewImageLoader(1000, config.GetPath("/data/icons"), 0)
 	manager.loadAllIcons()
 
 	return manager, nil
@@ -56,17 +64,17 @@ func (us *UserStorageManager) loadAllIcons() {
 	us.iconLoader.GetLocalBasePath()
 
 	// Scan metadata directory
-	files, err := os.ReadDir(us.iconLoader.GetLocalBasePath())
-	if err != nil {
-		fmt.Println("failed to read metadata directory: %w", err)
-	}
+	//files, err := os.ReadDir(us.iconLoader.GetLocalBasePath())
+	//if err != nil {
+	//	fmt.Println("failed to read metadata directory: %w", err)
+	//}
 
-	var images []string
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".png") {
-			images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Name())
-		}
-	}
+	//var images []string
+	//for _, file := range files {
+	//	if strings.HasSuffix(file.Name(), ".png") {
+	//		images = append(images, "/media/mahdi/Cloud/apps/Photos/parsa_nasiri/assets/"+file.Name())
+	//	}
+	//}
 }
 
 func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*collection.Manager[*model.Person], error) {
@@ -78,7 +86,6 @@ func (us *UserStorageManager) GetAssetManager(c *gin.Context, userID int) (*coll
 	return userStorage.PersonManager, nil
 }
 
-// periodicMaintenance runs background tasks
 func (us *UserStorageManager) periodicMaintenance() {
 
 	saveTicker := time.NewTicker(10 * time.Second)
@@ -100,12 +107,12 @@ func (us *UserStorageManager) periodicMaintenance() {
 	}
 }
 
-func (us *UserStorageManager) RepositoryGetOriginalImage(filename string) ([]byte, error) {
-	return us.originalImageLoader.LoadImage(us.ctx, filename)
+func (us *UserStorageManager) RepositoryGetOriginalImage(userID int, filename string) ([]byte, error) {
+	return us.userStorages[userID].originalImageLoader.LoadImage(us.ctx, filename)
 }
 
-func (us *UserStorageManager) RepositoryGetTinyImage(filename string) ([]byte, error) {
-	return us.tinyImageLoader.LoadImage(us.ctx, filename)
+func (us *UserStorageManager) RepositoryGetTinyImage(userID int, filename string) ([]byte, error) {
+	return us.userStorages[userID].tinyImageLoader.LoadImage(us.ctx, filename)
 }
 
 func (us *UserStorageManager) RepositoryGetIcon(filename string) ([]byte, error) {
@@ -123,87 +130,88 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 		return nil, fmt.Errorf("user id is Invalid")
 	}
 
-	user, err := us.userManager.Get(userID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found")
-	}
+	var user = us.users[userID]
 
 	// Check if userStorage already exists for this user
-	if storage, exists := us.storages[userID]; exists {
+	if storage, exists := us.userStorages[userID]; exists {
 		return storage, nil
 	}
 
+	fmt.Println("ali1")
 	// Handler context for background workers
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Handler user-specific subdirectories
-	userAssetDir := filepath.Join(us.config.AppDir, user.Username, us.config.AssetsDir)
-	userMetadataDir := filepath.Join(us.config.AppDir, user.Username, us.config.MetadataDir)
-	userThumbnailsDir := filepath.Join(us.config.AppDir, user.Username, us.config.ThumbnailsDir)
+	//userAssetDir := filepath.Join(us.config.AppDir, user.PhoneNumber, us.config.AssetsDir)
+	//userMetadataDir := filepath.Join(us.config.AppDir, user.PhoneNumber, us.config.MetadataDir)
+	//userThumbnailsDir := filepath.Join(us.config.AppDir, user.PhoneNumber, us.config.ThumbnailsDir)
 	//albumFile := filepath.Join(us.config.AppDir, user.Username, us.config.AlbumCollectionFile)
 	//tripFile := filepath.Join(us.config.AppDir, user.Username, us.config.TripCollectionFile)
 	//personFile := filepath.Join(us.config.AppDir, user.Username, us.config.PersonCollectionFile)
 	//pinnedCollectionFile := filepath.Join(us.config.AppDir, user.Username, "pinnedCollectionFile.json")
 
 	// Ensure user directories exist
-	userDirs := []string{userAssetDir, userMetadataDir, userThumbnailsDir}
-	for _, dir := range userDirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create user directory %s: %w", dir, err)
-		}
-	}
+	//userDirs := []string{userAssetDir, userMetadataDir, userThumbnailsDir}
+	//for _, dir := range userDirs {
+	//	if err := os.MkdirAll(dir, 0755); err != nil {
+	//		return nil, fmt.Errorf("failed to create user directory %s: %w", dir, err)
+	//	}
+	//}
 
 	// Handler user-specific config
 	userConfig := us.config
-	userConfig.MetadataDir = userMetadataDir
-	userConfig.ThumbnailsDir = userThumbnailsDir
+	userConfig.MetadataDir = config.GetUserPath(user.PhoneNumber, "assets")
+	userConfig.ThumbnailsDir = config.GetUserPath(user.PhoneNumber, "thumbnails")
 
 	// Handler new userStorage for this user
 	userStorage := &UserStorage{
 		config:            userConfig,
 		user:              *user,
-		metadata:          metadata.NewMetadataManager(userMetadataDir),
-		thumbnail:         thumbnail.NewThumbnailManager(userThumbnailsDir),
+		metadata:          metadata.NewMetadataManager(config.GetUserPath(user.PhoneNumber, "metadata")),
+		thumbnail:         thumbnail.NewThumbnailManager(config.GetUserPath(user.PhoneNumber, "thumbnails")),
 		maintenanceCtx:    ctx,
 		cancelMaintenance: cancel,
 	}
+
+	userStorage.originalImageLoader = image_loader.NewImageLoader(50, config.GetUserPath(user.PhoneNumber, "assets"), 5*time.Minute)
+	userStorage.tinyImageLoader = image_loader.NewImageLoader(30000, config.GetUserPath(user.PhoneNumber, "thumbnails"), 60*time.Minute)
 
 	userStorage.assets, err = userStorage.metadata.LoadUserAllMetadata()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load metadata for user %s: %w", userID, err)
 	}
 
-	userStorage.AlbumManager, err = collection.NewCollectionManager[*model.Album]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/albums.json")
+	userStorage.AlbumManager, err = collection.NewCollectionManager[*model.Album](config.GetUserPath(user.PhoneNumber, "albums.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.SharedAlbumManager, err = collection.NewCollectionManager[*model.SharedAlbum]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/shared_albums.json")
+	userStorage.SharedAlbumManager, err = collection.NewCollectionManager[*model.SharedAlbum](config.GetUserPath(user.PhoneNumber, "shared_albums.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.TripManager, err = collection.NewCollectionManager[*model.Trip]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/trips.json")
+	userStorage.TripManager, err = collection.NewCollectionManager[*model.Trip](config.GetUserPath(user.PhoneNumber, "trips.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PersonManager, err = collection.NewCollectionManager[*model.Person]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/persons.json")
+	userStorage.PersonManager, err = collection.NewCollectionManager[*model.Person](config.GetUserPath(user.PhoneNumber, "persons.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.PinnedManager, err = collection.NewCollectionManager[*model.Pinned]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/pinned.json")
+	userStorage.PinnedManager, err = collection.NewCollectionManager[*model.Pinned](config.GetUserPath(user.PhoneNumber, "pinned.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	userStorage.VillageManager, err = collection.NewCollectionManager[*model.Village]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/villages.json")
+	userStorage.VillageManager, err = collection.NewCollectionManager[*model.Village](config.GetPath("/data/villages.json"))
 	if err != nil {
 		panic(err)
 	}
 
-	//userStorage.CameraManager, err = NewCollectionManager[*model.Camera]("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/camera.json")
+	//userStorage.CameraManager, err = collection.NewCollectionManager[*model.Camera](config.GetPath("/data/camera.json"))
 	//if err != nil {
 	//	panic(err)
 	//}
@@ -215,7 +223,7 @@ func (us *UserStorageManager) GetUserStorage(c *gin.Context, userID int) (*UserS
 	userStorage.preparePinned()
 
 	// Store the new userStorage
-	us.storages[userID] = userStorage
+	us.userStorages[userID] = userStorage
 
 	return userStorage, nil
 }
@@ -224,14 +232,10 @@ func (us *UserStorageManager) RemoveStorageForUser(userID int) {
 	us.mu.Lock()
 	defer us.mu.Unlock()
 
-	if storage, exists := us.storages[userID]; exists {
+	if storage, exists := us.userStorages[userID]; exists {
 		// Cancel any background operations
 		storage.cancelMaintenance()
 		// Remove from map
-		delete(us.storages, userID)
+		delete(us.userStorages, userID)
 	}
-}
-
-func (us *UserStorageManager) GetUserManager() (*collection.Manager[*happle_models.User], error) {
-	return us.userManager, nil
 }

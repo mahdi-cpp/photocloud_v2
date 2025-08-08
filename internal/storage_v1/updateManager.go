@@ -3,7 +3,7 @@ package storage_v1
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"os"
 	"path/filepath"
 	"sync"
@@ -24,7 +24,7 @@ func (update *UpdateManager) updateCameraMake(id int, CameraMake string) error {
 	defer update.mutex.RUnlock()
 
 	path := update.getMetadataPath(id)
-	err := updateJSONFile(path, func(cfg *happle_models.PHAsset) error {
+	err := updateJSONFile(path, func(cfg *common_models.PHAsset) error {
 		cfg.CameraMake = CameraMake
 		return nil
 	})
@@ -40,7 +40,7 @@ func (update *UpdateManager) updateAlbum(id int, CameraMake string) error {
 	defer update.mutex.RUnlock()
 
 	path := update.getMetadataPath(id)
-	err := updateJSONFile(path, func(cfg *happle_models.PHAsset) error {
+	err := updateJSONFile(path, func(cfg *common_models.PHAsset) error {
 		cfg.CameraMake = CameraMake
 		return nil
 	})

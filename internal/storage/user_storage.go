@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/domain/model"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/collection"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/exif"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/image_loader"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/metadata"
 	"github.com/mahdi-cpp/photocloud_v2/pkg/thumbnail"
 	_ "image/jpeg"
@@ -23,28 +24,30 @@ import (
 )
 
 type UserStorage struct {
-	config             Config
-	mu                 sync.RWMutex // Protects all indexes and maps
-	user               happle_models.User
-	assets             map[int]*happle_models.PHAsset
-	cameras            map[string]*happle_models.PHCollection[model.Camera]
-	AlbumManager       *collection.Manager[*model.Album]
-	TripManager        *collection.Manager[*model.Trip]
-	PersonManager      *collection.Manager[*model.Person]
-	PinnedManager      *collection.Manager[*model.Pinned]
-	SharedAlbumManager *collection.Manager[*model.SharedAlbum]
-	VillageManager     *collection.Manager[*model.Village]
-	metadata           *metadata.AssetMetadataManager
-	thumbnail          *thumbnail.ThumbnailManager
-	lastID             int
-	lastRebuild        time.Time
-	maintenanceCtx     context.Context
-	cancelMaintenance  context.CancelFunc
-	statsMu            sync.Mutex
-	stats              Stats
+	config              Config
+	mu                  sync.RWMutex // Protects all indexes and maps
+	user                common_models.User
+	originalImageLoader *image_loader.ImageLoader
+	tinyImageLoader     *image_loader.ImageLoader
+	assets              map[int]*common_models.PHAsset
+	cameras             map[string]*common_models.PHCollection[model.Camera]
+	AlbumManager        *collection.Manager[*model.Album]
+	TripManager         *collection.Manager[*model.Trip]
+	PersonManager       *collection.Manager[*model.Person]
+	PinnedManager       *collection.Manager[*model.Pinned]
+	SharedAlbumManager  *collection.Manager[*model.SharedAlbum]
+	VillageManager      *collection.Manager[*model.Village]
+	metadata            *metadata.AssetMetadataManager
+	thumbnail           *thumbnail.ThumbnailManager
+	lastID              int
+	lastRebuild         time.Time
+	maintenanceCtx      context.Context
+	cancelMaintenance   context.CancelFunc
+	statsMu             sync.Mutex
+	stats               Stats
 }
 
-func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*happle_models.PHAsset, error) {
+func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, header *multipart.FileHeader) (*common_models.PHAsset, error) {
 
 	// Check file size
 	if header.Size > userStorage.config.MaxUploadSize {
@@ -78,7 +81,7 @@ func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, hea
 	mediaType := asset_create.GetMediaType(ext)
 
 	// Handler asset
-	asset := &happle_models.PHAsset{
+	asset := &common_models.PHAsset{
 		ID:           userStorage.lastID,
 		UserID:       userID,
 		Filename:     filename,
@@ -108,12 +111,12 @@ func (userStorage *UserStorage) UploadAsset(userID int, file multipart.File, hea
 	return asset, nil
 }
 
-func (userStorage *UserStorage) GetAsset(assetId int) (*happle_models.PHAsset, bool) {
+func (userStorage *UserStorage) GetAsset(assetId int) (*common_models.PHAsset, bool) {
 	asset, exists := userStorage.assets[assetId]
 	return asset, exists
 }
 
-func (userStorage *UserStorage) GetAllAssets() map[int]*happle_models.PHAsset {
+func (userStorage *UserStorage) GetAllAssets() map[int]*common_models.PHAsset {
 	return userStorage.assets
 }
 
@@ -128,7 +131,7 @@ func (userStorage *UserStorage) GetAssetContent(id int) ([]byte, error) {
 	return os.ReadFile(assetPath)
 }
 
-func (userStorage *UserStorage) UpdateAsset(update happle_models.AssetUpdate) (string, error) {
+func (userStorage *UserStorage) UpdateAsset(update common_models.AssetUpdate) (string, error) {
 
 	userStorage.mu.Lock()
 	defer userStorage.mu.Unlock()
@@ -321,7 +324,7 @@ func (userStorage *UserStorage) GetSystemStats() Stats {
 	return userStorage.stats
 }
 
-func (userStorage *UserStorage) FetchAssets(with happle_models.PHFetchOptions) ([]*happle_models.PHAsset, int, error) {
+func (userStorage *UserStorage) FetchAssets(with common_models.PHFetchOptions) ([]*common_models.PHAsset, int, error) {
 
 	userStorage.mu.RLock()
 	defer userStorage.mu.RUnlock()
@@ -332,7 +335,7 @@ func (userStorage *UserStorage) FetchAssets(with happle_models.PHFetchOptions) (
 	criteria := assetBuildCriteria(with)
 
 	// Step 2: Find all matching assets (store pointers to original assets)
-	var matches []*happle_models.PHAsset
+	var matches []*common_models.PHAsset
 	totalCount := 0
 
 	for _, asset := range userStorage.assets {
@@ -387,7 +390,7 @@ func (userStorage *UserStorage) prepareAlbums() {
 
 	for _, album := range items {
 
-		with := happle_models.PHFetchOptions{
+		with := common_models.PHFetchOptions{
 			UserID:     4,
 			Albums:     []int{album.ID},
 			SortBy:     "modificationDate",
@@ -412,7 +415,7 @@ func (userStorage *UserStorage) prepareTrips() {
 
 	for _, item := range items {
 
-		with := happle_models.PHFetchOptions{
+		with := common_models.PHFetchOptions{
 			UserID:     1,
 			Trips:      []int{item.ID},
 			SortBy:     "modificationDate",
@@ -437,7 +440,7 @@ func (userStorage *UserStorage) preparePersons() {
 
 	for _, item := range items {
 
-		with := happle_models.PHFetchOptions{
+		with := common_models.PHFetchOptions{
 			UserID:     1,
 			Persons:    []int{item.ID},
 			SortBy:     "modificationDate",
@@ -461,7 +464,7 @@ func (userStorage *UserStorage) prepareCameras() {
 	//}
 
 	if userStorage.cameras == nil {
-		userStorage.cameras = map[string]*happle_models.PHCollection[model.Camera]{}
+		userStorage.cameras = map[string]*common_models.PHCollection[model.Camera]{}
 	}
 
 	for _, asset := range userStorage.assets {
@@ -474,7 +477,7 @@ func (userStorage *UserStorage) prepareCameras() {
 			camera.Item.Count = camera.Item.Count + 1
 			userStorage.cameras[asset.CameraModel] = camera
 		} else {
-			collection := &happle_models.PHCollection[model.Camera]{
+			collection := &common_models.PHCollection[model.Camera]{
 				Item: model.Camera{
 					ID:          1,
 					CameraMake:  asset.CameraMake,
@@ -490,7 +493,7 @@ func (userStorage *UserStorage) prepareCameras() {
 
 	for _, collection := range userStorage.cameras {
 
-		with := happle_models.PHFetchOptions{
+		with := common_models.PHFetchOptions{
 			UserID:      1,
 			CameraMake:  collection.Item.CameraMake,
 			CameraModel: collection.Item.CameraModel,
@@ -516,11 +519,11 @@ func (userStorage *UserStorage) preparePinned() {
 
 	for _, item := range items {
 
-		var with *happle_models.PHFetchOptions
+		var with *common_models.PHFetchOptions
 
 		switch item.Type {
 		case "camera":
-			with = &happle_models.PHFetchOptions{
+			with = &common_models.PHFetchOptions{
 				IsCamera:   GetBoolPointer(true),
 				SortBy:     "modificationDate",
 				SortOrder:  "acs",
@@ -528,7 +531,7 @@ func (userStorage *UserStorage) preparePinned() {
 			}
 			break
 		case "screenshot":
-			with = &happle_models.PHFetchOptions{
+			with = &common_models.PHFetchOptions{
 				IsScreenshot: GetBoolPointer(true),
 				SortBy:       "modificationDate",
 				SortOrder:    "acs",
@@ -536,7 +539,7 @@ func (userStorage *UserStorage) preparePinned() {
 			}
 			break
 		case "favorite":
-			with = &happle_models.PHFetchOptions{
+			with = &common_models.PHFetchOptions{
 				IsFavorite: GetBoolPointer(true),
 				SortBy:     "modificationDate",
 				SortOrder:  "acs",
@@ -544,7 +547,7 @@ func (userStorage *UserStorage) preparePinned() {
 			}
 			break
 		case "video":
-			with = &happle_models.PHFetchOptions{
+			with = &common_models.PHFetchOptions{
 				MediaType:  "video",
 				SortBy:     "modificationDate",
 				SortOrder:  "acs",
@@ -552,8 +555,8 @@ func (userStorage *UserStorage) preparePinned() {
 			}
 			break
 		case "map":
-			var assets []*happle_models.PHAsset
-			asset := happle_models.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
+			var assets []*common_models.PHAsset
+			asset := common_models.PHAsset{ID: 12, MediaType: "image", Url: "map", Filename: "map"}
 			assets = append(assets, &asset)
 			userStorage.PinnedManager.ItemAssets[item.ID] = assets
 			break
@@ -563,7 +566,7 @@ func (userStorage *UserStorage) preparePinned() {
 				continue
 			}
 			item.Title = album.Title
-			with = &happle_models.PHFetchOptions{
+			with = &common_models.PHFetchOptions{
 				Albums:     []int{album.ID},
 				SortBy:     "modificationDate",
 				SortOrder:  "acs",
@@ -585,7 +588,7 @@ func (userStorage *UserStorage) preparePinned() {
 	}
 }
 
-func (userStorage *UserStorage) GetAllCameras() map[string]*happle_models.PHCollection[model.Camera] {
+func (userStorage *UserStorage) GetAllCameras() map[string]*common_models.PHCollection[model.Camera] {
 	return userStorage.cameras
 }
 
@@ -631,9 +634,9 @@ func (userStorage *UserStorage) DeleteAsset(id int) error {
 	return nil
 }
 
-func assetBuildCriteria(with happle_models.PHFetchOptions) assetSearchCriteria[happle_models.PHAsset] {
+func assetBuildCriteria(with common_models.PHFetchOptions) assetSearchCriteria[common_models.PHAsset] {
 
-	return func(asset happle_models.PHAsset) bool {
+	return func(asset common_models.PHAsset) bool {
 
 		// Filter by UserID (if non-zero)
 		//if with.UserID != 0 && asset.UserID != with.UserID {
@@ -809,7 +812,7 @@ func assetSearch[T any](slice []T, criteria assetSearchCriteria[T]) []IndexedIte
 	return results
 }
 
-func assetSortAssets(assets []*happle_models.PHAsset, sortBy, sortOrder string) {
+func assetSortAssets(assets []*common_models.PHAsset, sortBy, sortOrder string) {
 
 	if sortBy == "" {
 		return // No sorting requested

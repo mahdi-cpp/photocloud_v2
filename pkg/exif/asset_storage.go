@@ -3,7 +3,7 @@ package asset_create
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,7 +21,7 @@ func GetMetadataPath(id int) string {
 }
 
 // SaveAssetMetadata saves a PHAsset to a JSON file
-func SaveAssetMetadata(asset happle_models.PHAsset) error {
+func SaveAssetMetadata(asset common_models.PHAsset) error {
 
 	// Create filename based on ID and creation date
 	//filename := filepath.Join(AppDir+username+MetadataDir, asset.ID+".json")

@@ -3,11 +3,9 @@ package handler
 import (
 	"fmt"
 	"github.com/mahdi-cpp/photocloud_v2/internal/storage"
-	"github.com/mahdi-cpp/photocloud_v2/internal/storage_v1"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"log"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -43,7 +41,7 @@ func (handler *AssetHandler) Upload(c *gin.Context) {
 	defer file.Close()
 
 	// Handler asset metadata
-	asset := &happle_models.PHAsset{
+	asset := &common_models.PHAsset{
 		UserID:   userID,
 		Filename: header.Filename,
 	}
@@ -78,7 +76,7 @@ func (handler *AssetHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var update happle_models.AssetUpdate
+	var update common_models.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -113,7 +111,7 @@ func (handler *AssetHandler) UpdateAll(c *gin.Context) {
 		return
 	}
 
-	var update happle_models.AssetUpdate
+	var update common_models.AssetUpdate
 	if err := c.ShouldBindJSON(&update); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -196,10 +194,10 @@ func (handler *AssetHandler) Search(c *gin.Context) {
 		}
 	}
 
-	filters := happle_models.PHFetchOptions{
+	filters := common_models.PHFetchOptions{
 		UserID:    userID,
 		Query:     query,
-		MediaType: happle_models.MediaType(mediaType),
+		MediaType: common_models.MediaType(mediaType),
 	}
 
 	if len(dateRange) > 0 {
@@ -230,7 +228,7 @@ func (handler *AssetHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	var request happle_models.AssetDelete
+	var request common_models.AssetDelete
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
@@ -259,7 +257,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 		return
 	}
 
-	var with happle_models.PHFetchOptions
+	var with common_models.PHFetchOptions
 	if err := c.ShouldBindJSON(&with); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		fmt.Println("Invalid request")
@@ -279,7 +277,7 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 	fmt.Println("Filters count: ", len(items))
 
-	result := happle_models.PHFetchResult[*happle_models.PHAsset]{
+	result := common_models.PHFetchResult[*common_models.PHAsset]{
 		Items:  items,
 		Total:  total,
 		Limit:  100,
@@ -293,18 +291,24 @@ func (handler *AssetHandler) Filters(c *gin.Context) {
 
 func (handler *AssetHandler) OriginalDownload(c *gin.Context) {
 
-	filename := c.Param("filename")
-	filepath2 := filepath.Join("/media/mahdi/Cloud/apps/Photos/mahdi_abdolmaleki/assets", filename)
-
-	fileSize, err := storage_v1.GetFileSize(filepath2)
+	userID, err := getUserId(c)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
 		return
 	}
 
-	filepathTiny := filepath.Join("mahdi_abdolmaleki/assets", filename)
+	filename := c.Param("filename")
+	//filepath2 := filepath.Join("/mahdi_abdolmaleki/assets", filename)
 
-	imgData, err := handler.userStorageManager.RepositoryGetOriginalImage(filepathTiny)
+	//fileSize, err := storage_v1.GetFileSize(config.GetPath(filepath2))
+	//if err != nil {
+	//	c.AbortWithStatusJSON(500, gin.H{"error": "Failed to get file size"})
+	//	return
+	//}
+
+	//filepathTiny := filepath.Join("mahdi_abdolmaleki/assets", filename)
+
+	imgData, err := handler.userStorageManager.RepositoryGetOriginalImage(userID, filename)
 	if err != nil {
 		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
@@ -314,13 +318,20 @@ func (handler *AssetHandler) OriginalDownload(c *gin.Context) {
 	//c.Header("Content-Type", "mage/jpeg")
 	//c.Header("Content-Encoding", "identity") // Disable compression
 	//c.Next()
-	c.Header("Content-Length", fmt.Sprintf("%d", fileSize))
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	c.Header("Accept-Ranges", "bytes")
-	c.File(filepath2)
+	//c.Header("Content-Length", fmt.Sprintf("%d", fileSize))
+
+	//c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	//c.Header("Accept-Ranges", "bytes")
+	//c.File(filepath2)
 }
 
 func (handler *AssetHandler) TinyImageDownload(c *gin.Context) {
+
+	userID, err := getUserId(c)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "userID must be an integer"})
+		return
+	}
 
 	filename := c.Param("filename")
 	if strings.Contains(filename, "png") {
@@ -333,9 +344,9 @@ func (handler *AssetHandler) TinyImageDownload(c *gin.Context) {
 		return
 	}
 
-	filepathTiny := filepath.Join("mahdi_abdolmaleki/thumbnails", filename)
+	//filepathTiny := filepath.Join("mahdi_abdolmaleki/thumbnails", filename)
 
-	imgData, err := handler.userStorageManager.RepositoryGetTinyImage(filepathTiny)
+	imgData, err := handler.userStorageManager.RepositoryGetTinyImage(userID, filename)
 	if err != nil {
 		c.AbortWithStatusJSON(404, gin.H{"error": "File not found"})
 	} else {
@@ -345,7 +356,7 @@ func (handler *AssetHandler) TinyImageDownload(c *gin.Context) {
 
 func (handler *AssetHandler) IconDownload(c *gin.Context) {
 	filename := c.Param("filename")
-	imgData, err := handler.userStorageManager.RepositoryGetTinyImage(filename)
+	imgData, err := handler.userStorageManager.RepositoryGetIcon(filename)
 	if err != nil {
 		c.Data(http.StatusOK, "image/png", imgData) // Adjust MIME type as necessary
 	}

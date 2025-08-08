@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/disintegration/imaging"
 	"github.com/mahdi-cpp/PhotoKit/utils"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"image"
 	"log"
 	"os"
@@ -141,7 +141,7 @@ func CreateAssetOfUploadDirectory() {
 				isAssetScreenshot = true
 			}
 
-			asset := happle_models.PHAsset{
+			asset := common_models.PHAsset{
 				ID:          idCounter,
 				UserID:      2,
 				Url:         strconv.Itoa(idCounter),
@@ -277,7 +277,7 @@ func CreateOnlyDatabase(userId int) {
 				height = h
 			}
 
-			newPHAsset := happle_models.PHAsset{
+			newPHAsset := common_models.PHAsset{
 				UserID:      userId,
 				Url:         named,
 				MediaType:   "image",

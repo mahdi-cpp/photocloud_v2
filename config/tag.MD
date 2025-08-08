@@ -17,3 +17,12 @@ go get github.com/mahdi-cpp/photocloud_v2
 به صفحه ریپازیتوری خودتون در GitHub/GitLab برید و به قسمت "Tags" (تگ‌ها) مراجعه کنید. آیا v0.1.0 رو اونجا می‌بینید؟
 
 همچنین می‌تونید با دستور git ls-remote --tags origin از خط فرمان چک کنید که آیا تگ v0.1.0 در ریموت وجود داره یا نه.
+
+
+### Add to require
+اگر کاربر رو مجبور می‌کنید که همیشه از آخرین تگ رسمی استفاده کنه، می‌تونه در go.mod خودش به صورت زیر مشخص کنه:
+```
+require (
+	github.com/mahdi-cpp/photocloud_v2 v1.0.0
+)
+```

@@ -2,7 +2,7 @@ package asset_create
 
 import (
 	"fmt"
-	"github.com/mahdi-cpp/photocloud_v2/pkg/happle_models"
+	"github.com/mahdi-cpp/photocloud_v2/pkg/common_models"
 	"image"
 	"os"
 	"os/exec"
@@ -79,20 +79,20 @@ func (e *ImageExtractor) extractBasicMetadata(filePath string) (int, int, string
 }
 
 // GetMediaType determines media type from filename
-func GetMediaType(filename string) happle_models.MediaType {
+func GetMediaType(filename string) common_models.MediaType {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
 	case ".jpg", ".jpeg":
-		return happle_models.ImageTypeJPEG
+		return common_models.ImageTypeJPEG
 	case ".png":
-		return happle_models.ImageTypePNG
+		return common_models.ImageTypePNG
 	case ".gif":
-		return happle_models.ImageTypeGIF
+		return common_models.ImageTypeGIF
 	case ".mp4":
-		return happle_models.VideoTypeMP4
+		return common_models.VideoTypeMP4
 	case ".mov":
-		return happle_models.VideoTypeMOV
+		return common_models.VideoTypeMOV
 	default:
-		return happle_models.UnknownType
+		return common_models.UnknownType
 	}
 }

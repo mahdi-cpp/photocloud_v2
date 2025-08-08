@@ -1,4 +1,4 @@
-package happle_models
+package common_models
 
 import (
 	"time"
@@ -7,6 +7,7 @@ import (
 // https://chat.deepseek.com/a/chat/s/9b010f32-b23d-4f9b-ae0c-31a9b2c9408c
 
 type PHCollectionList[T any] struct {
+	Status      string             `json:"status"` // "success" or "error"
 	Collections []*PHCollection[T] `json:"collections"`
 }
 

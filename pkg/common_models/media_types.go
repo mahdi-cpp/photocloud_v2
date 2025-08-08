@@ -1,4 +1,4 @@
-package happle_models
+package common_models
 
 type MediaType string
 
